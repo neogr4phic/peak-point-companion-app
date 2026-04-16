@@ -2,8 +2,14 @@
 ### Context document for PeakPoint Companion ###
 
 Programming Guideline:
-    - Use plain C language (compatible to Arduino)
-    
+    - Use programming language C/C++, compatible to Arduino
+    - Use and follow this programming guideline: https://docs.arduino.cc/programming/
+    - Read the platformio.ini
+    - Used hardware:
+        - Seeed Studio XIAO nRF52840
+        - 0.91" 128x32 OLED Display Modul, single color (white), I2C Interface with 4 Pins (VCC, GND, SDA, SCL)
+        - Rotary Encoder KY-040 on breakoutboard with 4 Pins (GND, +, SW, DT, CLK)
+
 
 Basis Features:
 
@@ -18,12 +24,13 @@ Basis Features:
     
     DayScore-History:
     - Variable name: dayScoreHistory
-    - Data type: Object (implement corresponding logic in C!)
+    - Data type: Object (implement a corresponding logic in C!)
     - Init value = empty
     - Structure:
         dayScoreHistory = {
             ODBC timestamp <HH:MM:SS>:<selectedLevel> 
         }
+
         Example:
         dayScoreHistory = {
             "09:38:12":"3",
@@ -31,6 +38,39 @@ Basis Features:
             "09:42:54":"7"
         }
     
+    Days-History:
+    - Variable name: daysHistory
+    - Data type: Object (implement a corresponding logic in C!)
+    - Init value = empty
+    - Structure:
+        daysHistory= {
+            <dd:mm:yyyy> {
+                score: <dayScore>,
+                history: <dayScoreHistory>
+            } 
+        }
+
+        Example:
+        daysHistory= {
+            "21.04.2026" {
+                score: 101,
+                history: {
+                    "09:38:12":"3",
+                    "09:39:22":"4",
+                    "09:42:54":"7"
+                }
+            },
+            "22.04.2026" {
+                score: 98,
+                history: {
+                    "11:08:22":"2",
+                    "11:10:02":"4",
+                    "12:01:53":"7"
+                }
+            }  
+        }
+
+
 
     Virtual Scroll-Wheel (tied to Rotary Encoder):
     - Variable name: selectedLevel
@@ -52,20 +92,36 @@ Basis Features:
         };
     - Font size: setTextSize(3)
     - Position: float left, vertically centered
+    
 
 
     Functionality:
-        - The system initializes with its init values for dayScoreCounter and selectedLevel
-        - When turning the Rotary Encoder clockwise, each tick increases selectedLevel by one level, until max. level = 9 is reached
-        - When turning the Rotary Encoder counter-clockwise, each tick decreases selectedLevel by one level, until min. level = 1 is reached
-        - Only when clicking the knob of the rotaray encoder, selectedLevel is submitted
-        - After submitting, selectedLevel is not reset, keeping its level
-        - After submitting, the corresponding points of the submitted level are added to dayScoreCounter, e.g. if level 7 is submitted, 80 points are added to the dayScoreCounter
-        - After submitting, dayScoreHistory gets a new entry with a timestamp as key and the selectedLevel as value
+        - The system initializes with its init values for dayScoreCounter and selectedLevel.
         
+        - When turning the Rotary Encoder clockwise, each tick increases selectedLevel by one level, until max. level = 9 is reached.
+        
+        - When turning the Rotary Encoder counter-clockwise, each tick decreases 
+        selectedLevel by one level, until min. level = 1 is reached.
+        
+        - When clicking the knob of the rotaray encoder, selectedLevel is submitted.
+        
+        - When submitting, the corresponding points of the submitted level are added to dayScoreCounter, e.g. if level 7 is submitted, 80 points are added to the dayScoreCounter and displayed.
+        
+        - When submitting, dayScoreHistory gets a new entry with a timestamp as key and the selectedLevel as value.
+        
+        - After submitting, selectedLevel is not reset, keeping its level.
+
+        - When long-pressing the knob for 3 seconds, the message "finishing day in <timer>" is displayed and a timer starts from 3 seconds to 0. When the timer runs out, the display changes to "Day finished! Good job!" and a new entry is saved to daysHistory.
+
+        - After long-pressing the knob for 3 seconds, the system resets to initial state by resetting dayScore and dayScoreHistory to its initial values. daysHistory should not reset and keep its values!
+
 
 
 Future Features [DO NOT IMPLEMENT!]:
+
+    Real Time Clock (RTC):
+    - Get time signal via bluetooth from Smartphone
+    - Use this signal during standalone runtime with Adafruit RTClib
 
     Boot Screen:
     - PeakPoint Logo/Graphic
