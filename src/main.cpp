@@ -17,31 +17,31 @@ const int PIN_CLK = D0;
 const int PIN_DT  = D1;
 const int PIN_SW  = D2;
 
-// Level to Points mapping (index 0 unused)
+// Level to Points mapping (index 0 used as placeholder so array index matches the level number directly)
 const uint16_t levelToPoints[] = {0, 1, 3, 6, 15, 25, 45, 80, 130, 200};
 
 // DayScore-Counter
 uint16_t dayScoreCounter = 0;
 
 // Virtual Scroll-Wheel
-uint16_t selectedLevel = 1;
+uint8_t selectedLevel = 1;
 
 // DayScore-History
-#define MAX_HISTORY_ENTRIES 100
+#define MAX_HISTORY_ENTRIES 100 // within one day!
 struct DayScoreEntry {
   char timestamp[9]; // "HH:MM:SS"
-  uint16_t level;
+  uint8_t level;
 };
 DayScoreEntry dayScoreHistory[MAX_HISTORY_ENTRIES];
-uint16_t dayScoreHistoryCount = 0;
+uint8_t dayScoreHistoryCount = 0;
 
 // Days-History
-#define MAX_DAYS 30
+#define MAX_DAYS 30 // TODO: make dynamic!
 struct DayEntry {
   char date[11]; // "dd.mm.yyyy"
   uint16_t score;
   DayScoreEntry history[MAX_HISTORY_ENTRIES];
-  uint16_t historyCount;
+  uint16_t historyCount; // TODO: maybe uint8_t if MAX_HISTORY_ENTRIES <= 255
 };
 DayEntry daysHistory[MAX_DAYS];
 uint16_t daysHistoryCount = 0;
@@ -172,6 +172,7 @@ void setup() {
   pinMode(PIN_DT,  INPUT_PULLUP);
   pinMode(PIN_SW,  INPUT_PULLUP);
 
+  // Initialize display, check if 0x3C is the default I2C address for 128x32 OLEDs, but it can vary based on the specific module
   if (!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) {
     for (;;);
   }
@@ -229,7 +230,7 @@ void loop() {
         longPressTriggered = false;
       }
 
-      // Update display (throttled)
+      // Update display (throttled, 1000ms/50ms=20 FPS)
       if (now - lastDisplayUpdate >= 50) {
         displayNormal();
         lastDisplayUpdate = now;

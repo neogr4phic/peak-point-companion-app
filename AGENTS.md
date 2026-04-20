@@ -74,7 +74,7 @@ Basis Features:
 
     Virtual Scroll-Wheel (tied to Rotary Encoder):
     - Variable name: selectedLevel
-    - Data type: uint16_t (0 bis 65535)
+    - Data type: uint8_t (0 to 255)
     - Init value = 1
     - Min. value = 1
     - Max. value = 9
@@ -118,6 +118,12 @@ Basis Features:
 
 
 Future Features [DO NOT IMPLEMENT!]:
+
+    Software modules:
+    - Introduce a modular approach for the software
+    - functionally split the main.cpp into logical modules within dedicated files
+    - use header files (.h) to link the software modules
+
 
     Real Time Clock (RTC):
     - Get time signal via bluetooth from Smartphone
