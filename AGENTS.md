@@ -126,6 +126,7 @@ Basis Features:
 Future Features [DO NOT IMPLEMENT!]:
 
     Real Time Clock (RTC):
+    - Correct the timings afterwards during sync with Smartphone (count the millis and use this value to correct)
     - Get time signal via bluetooth from Smartphone
     - Use this signal during standalone runtime with Adafruit RTClib
 
