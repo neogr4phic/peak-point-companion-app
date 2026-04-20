@@ -11,6 +11,12 @@ Programming Guideline:
         - Rotary Encoder KY-040 on breakoutboard with 4 Pins (GND, +, SW, DT, CLK)
 
 
+Software Architecture:
+- the software should follow a modular, easily maintainable approach
+- the functionally should be splitted into logical, dedicated modules/files
+- the linking of all modules should be realized with header files (.h)
+
+
 Basis Features:
 
     DayScore-Counter:
@@ -118,12 +124,6 @@ Basis Features:
 
 
 Future Features [DO NOT IMPLEMENT!]:
-
-    Software modules:
-    - Introduce a modular approach for the software
-    - functionally split the main.cpp into logical modules within dedicated files
-    - use header files (.h) to link the software modules
-
 
     Real Time Clock (RTC):
     - Get time signal via bluetooth from Smartphone
