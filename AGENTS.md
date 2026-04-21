@@ -138,3 +138,9 @@ Future Features [DO NOT IMPLEMENT!]:
     Screen Rotation
     - use portrait mode for screen
     - use display.width() and display.height() for rotated coordinate system
+
+
+Defects:
+    - Fast scrolling on the rotary encoder causes glitches of the selectedLevel: rotating clockwise makes the selectedLevel go up but then is randomly jumps back to a lower number when turning the know too fast
+    - Long press is detected only after 3 seconds of holding it
+    - After entering the finishing state, the counter counts down from 3 to 0 but even when I release the knob, not holding it anymore
