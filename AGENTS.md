@@ -128,9 +128,9 @@ Basis Features:
 
 
 
-!!Defects:
-    - Fast scrolling on the rotary encoder causes glitches of the selectedLevel: rotating clockwise makes the selectedLevel go up but then is randomly jumps back to a lower number when turning the know too fast
-    - After entering the finishing state, the counter counts down from 3 to 0 but even when I release the knob, not holding it anymore
+!!Defects (ignore defects marked as [solved]):
+    - [Solved] Fast scrolling on the rotary encoder causes glitches of the selectedLevel: rotating clockwise makes the selectedLevel go up but then is randomly jumps back to a lower number when turning the know too fast
+    - [Solved] After entering the finishing state, the counter counts down from 3 to 0 but even when I release the knob, not holding it anymore
 
 
 Future Features [DO NOT IMPLEMENT!]:
