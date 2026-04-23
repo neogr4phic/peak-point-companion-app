@@ -31,10 +31,13 @@ void loop() {
   unsigned long now = millis();
 
   // Read encoder rotation (only in normal state)
+  // Delta can be >1 when spinning fast, constrain clamps to valid range
   if (appState == STATE_NORMAL) {
     int8_t rotation = encoderReadRotation();
-    if (rotation > 0 && selectedLevel < 9) selectedLevel++;
-    if (rotation < 0 && selectedLevel > 1) selectedLevel--;
+    if (rotation != 0) {
+      int newLevel = (int)selectedLevel + (int)rotation;
+      selectedLevel = (uint8_t)constrain(newLevel, 1, 9);
+    }
   }
 
   // Read button
@@ -48,8 +51,8 @@ void loop() {
         buttonPressStart = now;
         longPressTriggered = false;
       } else if (currentButtonState && buttonPressed) {
-        // Button held - check for long press (3 seconds)
-        if (!longPressTriggered && (now - buttonPressStart >= 3000)) {
+        // Button held - enter finishing state after 500ms so countdown is the feedback
+        if (!longPressTriggered && (now - buttonPressStart >= 500)) {
           longPressTriggered = true;
           appState = STATE_FINISHING;
           finishingStartTime = now;
@@ -73,6 +76,15 @@ void loop() {
     }
 
     case STATE_FINISHING: {
+      // Defect fix: cancel if button released before countdown completes
+      if (!currentButtonState) {
+        appState = STATE_NORMAL;
+        buttonPressed = false;
+        longPressTriggered = false;
+        lastDisplayUpdate = 0; // force immediate redraw
+        break;
+      }
+
       unsigned long elapsed = now - finishingStartTime;
       int secondsLeft = 3 - (int)(elapsed / 1000);
 

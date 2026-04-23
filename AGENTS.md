@@ -9,6 +9,11 @@ Programming Guideline:
         - Seeed Studio XIAO nRF52840
         - 0.91" 128x32 OLED Display Modul, single color (white), I2C Interface with 4 Pins (VCC, GND, SDA, SCL)
         - Rotary Encoder KY-040 on breakoutboard with 4 Pins (GND, +, SW, DT, CLK)
+    - Rotary Encoder lib for KY-040:
+        - use library "mathertel/RotaryEncoder"
+        - it has Built-in software debouncing
+        - it detects direction reliably
+        - it supports acceleration (faster spin = larger steps)
 
 
 Software Architecture:
@@ -117,10 +122,15 @@ Basis Features:
         
         - After submitting, selectedLevel is not reset, keeping its level.
 
-        - When long-pressing the knob for 3 seconds, the message "finishing day in <timer>" is displayed and a timer starts from 3 seconds to 0. When the timer runs out, the display changes to "Day finished! Good job!" and a new entry is saved to daysHistory.
+        - When long-pressing the knob, the message "finishing day in <timer>" is displayed and a timer starts from 3 seconds to 0. When the timer runs out, the display changes to "Day finished! Good job!" and a new entry is saved to daysHistory.
 
-        - After long-pressing the knob for 3 seconds, the system resets to initial state by resetting dayScore and dayScoreHistory to its initial values. daysHistory should not reset and keep its values!
+        - When long-pressing the knob, the system resets to initial state by resetting dayScore and dayScoreHistory to its initial values. daysHistory should not reset and keep its values!
 
+
+
+!!Defects:
+    - Fast scrolling on the rotary encoder causes glitches of the selectedLevel: rotating clockwise makes the selectedLevel go up but then is randomly jumps back to a lower number when turning the know too fast
+    - After entering the finishing state, the counter counts down from 3 to 0 but even when I release the knob, not holding it anymore
 
 
 Future Features [DO NOT IMPLEMENT!]:
@@ -138,9 +148,3 @@ Future Features [DO NOT IMPLEMENT!]:
     Screen Rotation
     - use portrait mode for screen
     - use display.width() and display.height() for rotated coordinate system
-
-
-Defects:
-    - Fast scrolling on the rotary encoder causes glitches of the selectedLevel: rotating clockwise makes the selectedLevel go up but then is randomly jumps back to a lower number when turning the know too fast
-    - Long press is detected only after 3 seconds of holding it
-    - After entering the finishing state, the counter counts down from 3 to 0 but even when I release the knob, not holding it anymore
