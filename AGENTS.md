@@ -17,9 +17,9 @@ Programming Guideline:
 
 
 Software Architecture:
-- the software should follow a modular, easily maintainable approach
-- the functionally should be splitted into logical, dedicated modules/files
-- the linking of all modules should be realized with header files (.h)
+    - the software should follow a modular, easily maintainable approach
+    - the functionally should be splitted into logical, dedicated modules/files
+    - the linking of all modules should be realized with header files (.h)
 
 
 Basis Features:
@@ -106,7 +106,7 @@ Basis Features:
     
 
 
-    Functionality:
+    Function_1: DayScore Creation
         - The system initializes with its init values for dayScoreCounter and selectedLevel.
         
         - When turning the Rotary Encoder clockwise, each tick increases selectedLevel by one level, until max. level = 9 is reached.
@@ -126,6 +126,25 @@ Basis Features:
 
         - When long-pressing the knob, the system resets to initial state by resetting dayScore and dayScoreHistory to its initial values. daysHistory should not reset and keep its values!
 
+    Function_2: Bluetooth Connection to Smartphone
+        - A reliable and robust bluetooth connection to a smartphone (Android or iOS) should be created
+        - A React Native App on the Smartphone (Android or iOS) is the receiver of the data
+        - Use Bluefruit.h library
+        - Data format: JSON string
+        - Use the BLE GATT (Generic Attribute Profile) protocol with the following structure:
+            Device (XIAO nRF52840)
+                └── Service ("PeakPoint Data")
+                    ├── Characteristic_1 ("daysHistory")
+                    └── Characteristic_2 ("status")
+        - the Bluetooth connection should cause minimal power consumption, thus be only active when transmitting data after a specific user action. BLE should not run continously and should stay of if STATE_NORMAL.
+        - The BLE connection should be automatically triggered when STATE_FINISHED is reached.
+        - The following display message in the middle of the screen should appear when BLE is turned on: "Connecting to Smartphone...".
+        - When the BLE connection is established (Status="connected"), the screen should display "Smartphone connected!"
+        - When data is synced via BLE, the screen should display "Syncing data..."
+        - When data sync is finished via BLE, the screen should display "Sync finished!"
+        - In case of any errors of the BLE connection or the data sync, the screen shoud display "BLE Error!"
+        - If the display message is to wide to fit in one line, it should be split across two lines
+
 
 
 !!Defects (ignore defects marked as [solved]):
@@ -134,6 +153,11 @@ Basis Features:
 
 
 Future Features [DO NOT IMPLEMENT!]:
+
+    Extended Bluetooth Connection:
+    - Send multiple packets in case negotiated MTU (max transmission unit) is too small, e.g. when 30 days of history must be transmitted.
+    - Implement detailled error messages, e.g. "Connection lost", "Sync aborted", "Error during data sync", "No device found", etc.
+    - use globally unique UUIDs (for a published product), generated with "uuidgen"
 
     Real Time Clock (RTC):
     - Correct the timings afterwards during sync with Smartphone (count the millis and use this value to correct)

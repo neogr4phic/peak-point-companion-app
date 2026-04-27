@@ -3,6 +3,7 @@
 #include "encoder.h"
 #include "scoring.h"
 #include "rtc_time.h"
+#include "ble_connection.h"
 
 // Button state
 static bool buttonPressed = false;
@@ -13,7 +14,8 @@ static bool longPressTriggered = false;
 enum AppState {
   STATE_NORMAL,
   STATE_FINISHING,
-  STATE_FINISHED
+  STATE_FINISHED,
+  STATE_BLE
 };
 static AppState appState = STATE_NORMAL;
 static unsigned long finishingStartTime = 0;
@@ -24,6 +26,7 @@ void setup() {
   encoderInit();
   displayInit();
   rtcTimeInit();
+  bleInit();
   displayNormal(selectedLevel, dayScoreCounter);
 }
 
@@ -100,8 +103,17 @@ void loop() {
     }
 
     case STATE_FINISHED: {
-      // Show message for 3 seconds then return to normal
-      if (now - finishedDisplayTime >= 3000) {
+      // Show "Day finished!" for 2 seconds then start BLE sync
+      if (now - finishedDisplayTime >= 2000) {
+        bleStart();
+        appState = STATE_BLE;
+      }
+      break;
+    }
+
+    case STATE_BLE: {
+      // BLE is active - no encoder input, just drive the BLE state machine
+      if (bleUpdate()) {
         appState = STATE_NORMAL;
         buttonPressed = false;
         longPressTriggered = false;

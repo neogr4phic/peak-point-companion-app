@@ -10,5 +10,10 @@ void displayInit();
 void displayNormal(uint8_t level, uint16_t score);
 void displayFinishing(int secondsLeft);
 void displayFinished();
+void displayBleConnecting();
+void displayBleConnected();
+void displayBleSyncing();
+void displayBleSyncDone();
+void displayBleError();
 
 #endif
