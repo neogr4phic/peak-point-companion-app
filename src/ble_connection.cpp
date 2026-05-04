@@ -15,30 +15,18 @@ static BLECharacteristic statusChar(PP_STATUS_UUID);
 static unsigned long bleStartTime = 0;
 static bool          bleDataSent  = false;
 
-// Serialize daysHistory[] into a JSON string
-static void serializeDaysHistory(char* buf, size_t bufSize) {
+// Serialize dayScoreHistory[] into a JSON object string
+static void serializeDayScoreHistory(char* buf, size_t bufSize) {
   size_t pos = 0;
-  pos += snprintf(buf + pos, bufSize - pos, "[");
-
-  for (uint16_t d = 0; d < daysHistoryCount && pos < bufSize - 2; d++) {
-    if (d > 0) pos += snprintf(buf + pos, bufSize - pos, ",");
+  pos += snprintf(buf + pos, bufSize - pos, "{");
+  for (uint8_t i = 0; i < dayScoreHistoryCount && pos < bufSize - 2; i++) {
+    if (i > 0) pos += snprintf(buf + pos, bufSize - pos, ",");
     pos += snprintf(buf + pos, bufSize - pos,
-      "{\"date\":\"%s\",\"score\":%u,\"history\":{",
-      daysHistory[d].date,
-      daysHistory[d].score);
-
-    for (uint16_t h = 0; h < daysHistory[d].historyCount && pos < bufSize - 2; h++) {
-      if (h > 0) pos += snprintf(buf + pos, bufSize - pos, ",");
-      pos += snprintf(buf + pos, bufSize - pos,
-        "\"%s\":\"%u\"",
-        daysHistory[d].history[h].timestamp,
-        daysHistory[d].history[h].level);
-    }
-
-    pos += snprintf(buf + pos, bufSize - pos, "}}");
+      "\"%s\":\"%u\"",
+      dayScoreHistory[i].timestamp,
+      dayScoreHistory[i].level);
   }
-
-  snprintf(buf + pos, bufSize - pos, "]");
+  snprintf(buf + pos, bufSize - pos, "}");
 }
 
 static void writeStatus(const char* value) {
@@ -47,7 +35,7 @@ static void writeStatus(const char* value) {
 
 void bleInit() {
   Bluefruit.begin();
-  Bluefruit.setTxPower(4);
+  Bluefruit.setTxPower(BLE_TX_POWER_DBM);
   Bluefruit.setName("PeakPoint");
 
   ppService.begin();
@@ -55,13 +43,13 @@ void bleInit() {
   // Characteristic_1: daysHistory - readable, max 512 bytes
   daysHistoryChar.setProperties(CHR_PROPS_READ | CHR_PROPS_NOTIFY);
   daysHistoryChar.setPermission(SECMODE_OPEN, SECMODE_NO_ACCESS);
-  daysHistoryChar.setMaxLen(512);
+  daysHistoryChar.setMaxLen(BLE_JSON_BUF_SIZE);
   daysHistoryChar.begin();
 
   // Characteristic_2: status - readable short string
   statusChar.setProperties(CHR_PROPS_READ | CHR_PROPS_NOTIFY);
   statusChar.setPermission(SECMODE_OPEN, SECMODE_NO_ACCESS);
-  statusChar.setMaxLen(32);
+  statusChar.setMaxLen(BLE_STATUS_MAX_LEN);
   statusChar.begin();
   writeStatus("idle");
 
@@ -81,14 +69,14 @@ void bleStart() {
   Bluefruit.Advertising.addService(ppService);
   Bluefruit.ScanResponse.addName();
   Bluefruit.Advertising.restartOnDisconnect(false);
-  Bluefruit.Advertising.setInterval(160, 160); // 100ms intervals
+  Bluefruit.Advertising.setInterval(BLE_ADV_INTERVAL, BLE_ADV_INTERVAL);
   Bluefruit.Advertising.setFastTimeout(BLE_ADVERTISE_TIMEOUT_MS / 1000);
   Bluefruit.Advertising.start(BLE_ADVERTISE_TIMEOUT_MS / 1000);
 
   displayBleConnecting();
 }
 
-void bleStop() {
+static void bleStop() {
   Bluefruit.Advertising.stop();
   if (Bluefruit.connected()) {
     Bluefruit.disconnect(Bluefruit.connHandle());
@@ -107,14 +95,14 @@ bool bleUpdate() {
       // Show connected message briefly
       displayBleConnected();
       writeStatus("connected");
-      delay(800);
+      delay(BLE_CONNECTED_DISPLAY_MS);
 
       // Serialize and transmit
       displayBleSyncing();
       writeStatus("syncing");
 
-      char jsonBuf[512];
-      serializeDaysHistory(jsonBuf, sizeof(jsonBuf));
+      char jsonBuf[BLE_JSON_BUF_SIZE];
+      serializeDayScoreHistory(jsonBuf, sizeof(jsonBuf));
       bool ok = daysHistoryChar.write(jsonBuf, strlen(jsonBuf));
 
       if (ok) {
@@ -125,18 +113,18 @@ bool bleUpdate() {
         displayBleError();
       }
 
-      delay(2000); // keep result visible briefly
+      delay(BLE_RESULT_DISPLAY_MS); // keep result visible briefly
       bleStop();
       return true;
     }
   } else {
     // Not connected - check for timeout
-    bool timedOut = (now - bleStartTime >= (unsigned long)BLE_ADVERTISE_TIMEOUT_MS + 2000UL);
+    bool timedOut = (now - bleStartTime >= (unsigned long)BLE_ADVERTISE_TIMEOUT_MS + (unsigned long)BLE_RESULT_DISPLAY_MS);
     bool advStopped = !Bluefruit.Advertising.isRunning();
 
     if (timedOut || (advStopped && !bleDataSent)) {
       displayBleError();
-      delay(2000);
+      delay(BLE_RESULT_DISPLAY_MS);
       bleStop();
       return true;
     }

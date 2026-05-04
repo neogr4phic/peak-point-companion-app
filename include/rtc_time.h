@@ -6,6 +6,5 @@
 
 void rtcTimeInit();
 void getTimestamp(char* buffer);
-void getDateString(char* buffer);
 
 #endif

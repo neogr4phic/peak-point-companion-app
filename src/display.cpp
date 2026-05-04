@@ -1,4 +1,5 @@
 #include "display.h"
+#include "scoring.h"
 #include <Wire.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
@@ -7,7 +8,7 @@
 static Adafruit_SSD1306 oled(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 
 void displayInit() {
-  if (!oled.begin(SSD1306_SWITCHCAPVCC, 0x3C)) {
+  if (!oled.begin(SSD1306_SWITCHCAPVCC, OLED_I2C_ADDR)) {
     for (;;);
   }
   oled.clearDisplay();
@@ -36,16 +37,15 @@ void displayNormal(uint8_t level, uint16_t score) {
   oled.display();
 }
 
-void displayFinishing(int secondsLeft) {
+void displayCountdown(const char* label, int secondsLeft) {
   oled.clearDisplay();
   oled.setTextSize(1);
 
-  const char* msg = "finishing day in";
   int16_t x1, y1;
   uint16_t w, h;
-  oled.getTextBounds(msg, 0, 0, &x1, &y1, &w, &h);
+  oled.getTextBounds(label, 0, 0, &x1, &y1, &w, &h);
   oled.setCursor((SCREEN_WIDTH - w) / 2, 4);
-  oled.print(msg);
+  oled.print(label);
 
   oled.setTextSize(2);
   char timerStr[2];
@@ -155,3 +155,34 @@ void displayBleSyncDone() {
 void displayBleError() {
   displayAutoText("Bluetooth error!");
 }
+
+void displayHistoryList(uint16_t scrollOffset) {
+  oled.clearDisplay();
+  oled.setTextSize(1);
+
+  for (uint8_t row = 0; row < HISTORY_VISIBLE_ROWS; row++) {
+    uint16_t idx = scrollOffset + row;
+    if (idx < dayScoreHistoryCount) {
+      char buf[22];
+      snprintf(buf, sizeof(buf), "%s  L%u",
+        dayScoreHistory[idx].timestamp,
+        dayScoreHistory[idx].level);
+      oled.setCursor(0, 4 + row * 16);
+      oled.print(buf);
+    }
+  }
+
+  // Triangle up (top-right): show when can scroll up
+  if (scrollOffset > 0) {
+    oled.fillTriangle(123, 2, 119, 8, 127, 8, SSD1306_WHITE);
+  }
+  // Triangle down (bottom-right): show when can scroll down
+  if (dayScoreHistoryCount > 1 &&
+      scrollOffset + HISTORY_VISIBLE_ROWS < (uint16_t)dayScoreHistoryCount) {
+    oled.fillTriangle(123, 29, 119, 23, 127, 23, SSD1306_WHITE);
+  }
+
+  oled.display();
+}
+
+

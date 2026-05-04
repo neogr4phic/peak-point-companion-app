@@ -1,16 +1,24 @@
 #include "scoring.h"
 #include "rtc_time.h"
 
-const uint16_t levelToPoints[] = {0, 1, 3, 6, 15, 25, 45, 80, 130, 200};
+const uint16_t levelToPoints[] = {
+  LEVEL_POINTS_0,
+  LEVEL_POINTS_1,
+  LEVEL_POINTS_2,
+  LEVEL_POINTS_3,
+  LEVEL_POINTS_4,
+  LEVEL_POINTS_5,
+  LEVEL_POINTS_6,
+  LEVEL_POINTS_7,
+  LEVEL_POINTS_8,
+  LEVEL_POINTS_9
+};
 
 uint16_t dayScoreCounter = 0;
-uint8_t selectedLevel = 1;
+uint8_t selectedLevel = LEVEL_INIT;
 
 DayScoreEntry dayScoreHistory[MAX_HISTORY_ENTRIES];
 uint8_t dayScoreHistoryCount = 0;
-
-DayEntry daysHistory[MAX_DAYS];
-uint16_t daysHistoryCount = 0;
 
 void submitLevel() {
   if (dayScoreHistoryCount < MAX_HISTORY_ENTRIES) {
@@ -21,22 +29,11 @@ void submitLevel() {
 
   uint16_t points = levelToPoints[selectedLevel];
   uint32_t newScore = (uint32_t)dayScoreCounter + points;
-  dayScoreCounter = (newScore > 9999) ? 9999 : (uint16_t)newScore;
+  dayScoreCounter = (newScore > DAY_SCORE_MAX) ? DAY_SCORE_MAX : (uint16_t)newScore;
 }
 
-void finishDay() {
-  if (daysHistoryCount < MAX_DAYS) {
-    getDateString(daysHistory[daysHistoryCount].date);
-    daysHistory[daysHistoryCount].score = dayScoreCounter;
-    daysHistory[daysHistoryCount].historyCount = dayScoreHistoryCount;
-    for (uint16_t i = 0; i < dayScoreHistoryCount; i++) {
-      daysHistory[daysHistoryCount].history[i] = dayScoreHistory[i];
-    }
-    daysHistoryCount++;
-  }
-
-  // Reset daily values (daysHistory is preserved)
+void resetDay() {
   dayScoreCounter = 0;
   dayScoreHistoryCount = 0;
-  selectedLevel = 1;
+  selectedLevel = LEVEL_INIT;
 }
