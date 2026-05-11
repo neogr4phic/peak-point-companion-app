@@ -260,6 +260,24 @@ and rendered on two lines (y=6, y=18).
 
 ## 10. Future Features — DO NOT IMPLEMENT
 
+Gamification:
+- instead of points, you will gain meters in altitude (like when climbing a mountain). The unit should be "m" for meters.
+
+Translation:
+- all visible texts should have a german and englisch version
+- the language should be set in the options menu (not yet implemented)
+
+Battery indicator:
+- a visible battery indicator
+- a warning message when battery is in critical level (<=5 %)
+
+Settings menu:
+- a menu to control general settings for the device
+  -> language
+  -> screen brightness
+  -> version info
+  -> firmware update
+
 Extended Bluetooth:
   - Multi-packet transmission when negotiated MTU is smaller than the payload
   - Detailed error messages (e.g. "Connection lost", "No device found", "Sync aborted")
