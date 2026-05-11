@@ -40,8 +40,11 @@ void displayNormal(uint8_t level, uint16_t score) {
 void displayMenu(const char* const items[], uint8_t count, uint8_t cursor) {
   oled.clearDisplay();
   oled.setTextSize(1);
-  const uint8_t rowY[] = {6, 20};
-  for (uint8_t i = 0; i < count && i < 2; i++) {
+  const uint8_t rowY2[] = {6, 20};
+  const uint8_t rowY3[] = {4, 14, 24};
+  const uint8_t* rowY = (count == 3) ? rowY3 : rowY2;
+  uint8_t maxRows = (count == 3) ? 3 : 2;
+  for (uint8_t i = 0; i < count && i < maxRows; i++) {
     oled.setCursor(0, rowY[i]);
     oled.print(i == cursor ? "> " : "  ");
     oled.print(items[i]);

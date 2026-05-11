@@ -112,9 +112,10 @@ Example (JSON):
 Flow:
   STATE_NORMAL
     → long-press (≥500ms) → STATE_MENU (context: NORMAL)
-  STATE_MENU (context: NORMAL)
-    → select "Finish day" → STATE_FINISHED
-    → select "[cancel]"  → STATE_NORMAL
+  STATE_MENU (context: NORMAL)                    [history empty: 2 items; non-empty: 3 items]
+    → select "Finish day"   → STATE_FINISHED
+    → select "Delete last"  → delete most recent entry, back to STATE_NORMAL
+    → select "[cancel]"     → STATE_NORMAL
   STATE_FINISHED
     → short press (history not empty) → STATE_MENU (context: DELETE)
     → long-press (≥500ms) → STATE_MENU (context: FINISHED)
@@ -134,9 +135,10 @@ State descriptions:
   STATE_BLE       BLE advertising, connecting, syncing. No encoder input.
 
 Menu contents by context:
-  MENU_CTX_NORMAL    item 0: "Finish day"   item 1: "[cancel]"
-  MENU_CTX_FINISHED  item 0: "Sync via BLE" item 1: "[cancel]"
-  MENU_CTX_DELETE    item 0: "Delete"       item 1: "[cancel]"
+  MENU_CTX_NORMAL (history empty)     item 0: "Finish day"   item 1: "[cancel]"
+  MENU_CTX_NORMAL (history non-empty) item 0: "Finish day"   item 1: "Delete last"  item 2: "[cancel]"
+  MENU_CTX_FINISHED                   item 0: "Sync via BLE" item 1: "[cancel]"
+  MENU_CTX_DELETE                     item 0: "Delete"       item 1: "[cancel]"
 
 
 ## 7. Functional Requirements
@@ -152,11 +154,14 @@ Menu contents by context:
    Adds levelToPoints[selectedLevel] to dayScoreCounter (clamped to 9999).
    Appends a timestamped entry to dayScoreHistory.
 
-3. Finish day (long-press in STATE_NORMAL)
+3. Finish day / Delete last (long-press in STATE_NORMAL)
    - After 500 ms hold, opens STATE_MENU (context: NORMAL)
-   - Menu shows: "> Finish day" and "  [cancel]"
+   - When history is empty:     2-item menu: "> Finish day" / "  [cancel]"
+   - When history non-empty:    3-item menu: "> Finish day" / "  Delete last" / "  [cancel]"
    - Encoder moves cursor between items; short press selects
    - Selecting "Finish day" transitions immediately to STATE_FINISHED
+   - Selecting "Delete last" removes the most recent history entry, subtracts its
+     points from dayScoreCounter (floor 0), and returns to STATE_NORMAL
    - Selecting "[cancel]" returns to STATE_NORMAL
 
 4. History review (STATE_FINISHED)
@@ -233,8 +238,11 @@ Font sizes:
   All other text    setTextSize(1)  Centered; auto-split if too wide
 
 Menu layout (STATE_MENU):
-  Row 0  y=6   ">" or " " + item text
-  Row 1  y=20  ">" or " " + item text
+  2-item menu (default):          Row 0  y=6   ">" or " " + item text
+                                  Row 1  y=20  ">" or " " + item text
+  3-item menu (MENU_CTX_NORMAL,   Row 0  y=4   ">" or " " + item text
+  history non-empty):             Row 1  y=14  ">" or " " + item text
+                                  Row 2  y=24  ">" or " " + item text
 
 History list layout (STATE_FINISHED):
   Row 0  y=4   "> HH:MM:SS  L<N>"  — top entry, targeted by short press

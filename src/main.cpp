@@ -27,9 +27,10 @@ enum MenuContext { MENU_CTX_NORMAL, MENU_CTX_FINISHED, MENU_CTX_DELETE };
 static MenuContext menuContext;
 static uint8_t menuCursor = 0;
 
-static const char* menuItemsNormal[]   = { "Finish day",   "[cancel]" };
-static const char* menuItemsFinished[] = { "Sync via BLE", "[cancel]" };
-static const char* menuItemsDelete[]   = { "Delete",       "[cancel]" };
+static const char* menuItemsNormal2[]  = { "Finish day",                    "[cancel]" };
+static const char* menuItemsNormal3[]  = { "Finish day", "Delete last", "[cancel]" };
+static const char* menuItemsFinished[] = { "Sync via BLE",              "[cancel]" };
+static const char* menuItemsDelete[]   = { "Delete",                    "[cancel]" };
 
 // ─── Button helper ────────────────────────────────────────────────────────────
 enum ButtonEvent { BTN_NONE, BTN_SHORT_PRESS, BTN_LONG_PRESS };
@@ -96,43 +97,48 @@ void loop() {
     }
 
     case STATE_MENU: {
-      const char* const* items = (menuContext == MENU_CTX_NORMAL)   ? menuItemsNormal
+      bool normalHasHistory = (menuContext == MENU_CTX_NORMAL) && (dayScoreHistoryCount > 0);
+      const char* const* items = (menuContext == MENU_CTX_NORMAL)   ? (normalHasHistory ? menuItemsNormal3 : menuItemsNormal2)
                                : (menuContext == MENU_CTX_FINISHED) ? menuItemsFinished
                                :                                      menuItemsDelete;
+      uint8_t itemCount = normalHasHistory ? 3 : 2;
 
-      // Encoder moves cursor between the two items
+      // Encoder moves cursor
       if (rotation != 0) {
         int newCursor = (int)menuCursor + (int)rotation;
-        menuCursor = (uint8_t)constrain(newCursor, 0, 1);
+        menuCursor = (uint8_t)constrain(newCursor, 0, itemCount - 1);
       }
 
       ButtonEvent btn = processButton(currentButtonState, now);
       if (btn == BTN_SHORT_PRESS) {
-        if (menuCursor == 0) {
-          // Action item selected
-          if (menuContext == MENU_CTX_NORMAL) {
+        if (menuContext == MENU_CTX_NORMAL) {
+          if (menuCursor == 0) {                           // "Finish day"
             historyScrollOffset = 0;
             appState = STATE_FINISHED;
-          } else if (menuContext == MENU_CTX_FINISHED) {
-            bleStart();
-            appState = STATE_BLE;
-          } else { // MENU_CTX_DELETE
+          } else if (menuCursor == 1 && normalHasHistory) { // "Delete last"
+            deleteHistoryEntry(dayScoreHistoryCount - 1);
+            appState = STATE_NORMAL;
+          } else {                                          // "[cancel]"
+            appState = STATE_NORMAL;
+          }
+        } else if (menuContext == MENU_CTX_FINISHED) {
+          if (menuCursor == 0) { bleStart(); appState = STATE_BLE; }
+          else { appState = STATE_FINISHED; }
+        } else { // MENU_CTX_DELETE
+          if (menuCursor == 0) {
             deleteHistoryEntry(historyScrollOffset);
             int maxOffset = (int)dayScoreHistoryCount - HISTORY_VISIBLE_ROWS;
             if (maxOffset < 0) maxOffset = 0;
             if ((int)historyScrollOffset > maxOffset)
               historyScrollOffset = (uint16_t)maxOffset;
-            appState = STATE_FINISHED;
           }
-        } else {
-          // [cancel] — return to previous state
-          appState = (menuContext == MENU_CTX_NORMAL) ? STATE_NORMAL : STATE_FINISHED;
+          appState = STATE_FINISHED;
         }
         lastDisplayUpdate = 0;
       }
 
       if (now - lastDisplayUpdate >= DISPLAY_UPDATE_INTERVAL_MS) {
-        displayMenu(items, 2, menuCursor);
+        displayMenu(items, itemCount, menuCursor);
         lastDisplayUpdate = now;
       }
       break;
