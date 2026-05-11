@@ -111,24 +111,27 @@ Example (JSON):
 
 Flow:
   STATE_NORMAL
-    → long-press (≥500ms) → STATE_FINISHING
-  STATE_FINISHING
-    → 3s countdown completes → STATE_FINISHED
-    → button released early  → STATE_NORMAL (cancelled)
+    → long-press (≥500ms) → STATE_MENU (context: NORMAL)
+  STATE_MENU (context: NORMAL)
+    → select "Finish day" → STATE_FINISHED
+    → select "[cancel]"  → STATE_NORMAL
   STATE_FINISHED
-    → long-press (≥500ms) → STATE_BLE_PENDING
-  STATE_BLE_PENDING
-    → 3s countdown completes → STATE_BLE
-    → button released early  → STATE_FINISHED (cancelled)
+    → long-press (≥500ms) → STATE_MENU (context: FINISHED)
+  STATE_MENU (context: FINISHED)
+    → select "Sync via BLE" → STATE_BLE
+    → select "[cancel]"    → STATE_FINISHED
   STATE_BLE
     → sync complete or timeout → resetDay() → STATE_NORMAL
 
 State descriptions:
-  STATE_NORMAL       Default working state. Encoder adjusts level; short press submits.
-  STATE_FINISHING    Long-press countdown (3→0). Release cancels back to NORMAL.
-  STATE_FINISHED     Scrollable history list. Long-press starts BLE countdown.
-  STATE_BLE_PENDING  BLE countdown (3→0). Release cancels back to FINISHED.
-  STATE_BLE          BLE advertising, connecting, syncing. No encoder input.
+  STATE_NORMAL    Default working state. Encoder adjusts level; short press submits.
+  STATE_MENU      Context-sensitive menu. Encoder moves cursor; short press selects.
+  STATE_FINISHED  Scrollable history list. Long-press opens BLE menu.
+  STATE_BLE       BLE advertising, connecting, syncing. No encoder input.
+
+Menu contents by context:
+  MENU_CTX_NORMAL    item 0: "Finish day"   item 1: "[cancel]"
+  MENU_CTX_FINISHED  item 0: "Sync via BLE" item 1: "[cancel]"
 
 
 ## 7. Functional Requirements
@@ -145,11 +148,11 @@ State descriptions:
    Appends a timestamped entry to dayScoreHistory.
 
 3. Finish day (long-press in STATE_NORMAL)
-   - After 500 ms hold, transitions to STATE_FINISHING
-   - Display shows "finishing day in <N>" with a 3-second countdown
-   - Releasing before countdown ends cancels back to STATE_NORMAL
-   - When countdown reaches 0: display shows "Day finished! Good job!",
-     then transitions to STATE_FINISHED
+   - After 500 ms hold, opens STATE_MENU (context: NORMAL)
+   - Menu shows: "> Finish day" and "  [cancel]"
+   - Encoder moves cursor between items; short press selects
+   - Selecting "Finish day" transitions immediately to STATE_FINISHED
+   - Selecting "[cancel]" returns to STATE_NORMAL
 
 4. History review (STATE_FINISHED)
    - Displays dayScoreHistory as a vertically scrollable list
@@ -179,8 +182,8 @@ UUIDs:
   Characteristic_2: 12345678-1234-1234-1234-1234567890AD
 
 BLE flow and display messages:
-  Long-press in STATE_FINISHED  →  "BLE transmission in <N>"
-  Countdown reaches 0           →  "Connecting to Smartphone..."
+  Long-press in STATE_FINISHED  →  opens STATE_MENU (context: FINISHED)
+  Select "Sync via BLE"         →  "Connecting to Smartphone..."
   Smartphone connects           →  "Smartphone connected!"
   Transmitting JSON             →  "Syncing data..."
   Write acknowledged            →  "Sync finished!"
@@ -189,7 +192,7 @@ BLE flow and display messages:
 
 Rules:
   - BLE stays off in STATE_NORMAL — power consumption must be minimal
-  - Releasing the button during the BLE countdown cancels back to STATE_FINISHED
+  - Selecting "[cancel]" in the menu returns to STATE_FINISHED without starting BLE
   - After sync completes (success or error), resetDay() is called and device
     returns to STATE_NORMAL
   - Display messages wider than 128 px are automatically split across two lines
@@ -210,8 +213,12 @@ Data format (Characteristic_1 payload):
 Font sizes:
   selectedLevel     setTextSize(3)  Float left, vertically centered
   dayScoreCounter   setTextSize(4)  Float right, vertically centered
-  Countdown number  setTextSize(2)  Centered
+  Menu items        setTextSize(1)  Left-aligned; ">" prefix on selected item
   All other text    setTextSize(1)  Centered; auto-split if too wide
+
+Menu layout (STATE_MENU):
+  Row 0  y=6   ">" or " " + item text
+  Row 1  y=20  ">" or " " + item text
 
 Long messages that exceed 128 px are split at the last fitting word boundary
 and rendered on two lines (y=6, y=18).
@@ -224,6 +231,9 @@ and rendered on two lines (y=6, y=18).
 
 2. SOLVED  Countdown continued after releasing the knob in STATE_FINISHING.
            Fixed by checking button state each loop iteration.
+
+3. SOLVED  STATE_FINISHING and STATE_BLE_PENDING (3-second countdowns) replaced
+           by a context-sensitive menu (STATE_MENU). No more timed confirmations.
 
 
 ## 10. Future Features — DO NOT IMPLEMENT

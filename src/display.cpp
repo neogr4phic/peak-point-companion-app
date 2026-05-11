@@ -37,43 +37,15 @@ void displayNormal(uint8_t level, uint16_t score) {
   oled.display();
 }
 
-void displayCountdown(const char* label, int secondsLeft) {
+void displayMenu(const char* const items[], uint8_t count, uint8_t cursor) {
   oled.clearDisplay();
   oled.setTextSize(1);
-
-  int16_t x1, y1;
-  uint16_t w, h;
-  oled.getTextBounds(label, 0, 0, &x1, &y1, &w, &h);
-  oled.setCursor((SCREEN_WIDTH - w) / 2, 4);
-  oled.print(label);
-
-  oled.setTextSize(2);
-  char timerStr[2];
-  snprintf(timerStr, sizeof(timerStr), "%d", secondsLeft);
-  oled.getTextBounds(timerStr, 0, 0, &x1, &y1, &w, &h);
-  oled.setCursor((SCREEN_WIDTH - w) / 2, 16);
-  oled.print(secondsLeft);
-
-  oled.display();
-}
-
-void displayFinished() {
-  oled.clearDisplay();
-  oled.setTextSize(1);
-
-  int16_t x1, y1;
-  uint16_t w, h;
-  const char* line1 = "Day finished!";
-  const char* line2 = "Good job!";
-
-  oled.getTextBounds(line1, 0, 0, &x1, &y1, &w, &h);
-  oled.setCursor((SCREEN_WIDTH - w) / 2, 4);
-  oled.print(line1);
-
-  oled.getTextBounds(line2, 0, 0, &x1, &y1, &w, &h);
-  oled.setCursor((SCREEN_WIDTH - w) / 2, 18);
-  oled.print(line2);
-
+  const uint8_t rowY[] = {6, 20};
+  for (uint8_t i = 0; i < count && i < 2; i++) {
+    oled.setCursor(0, rowY[i]);
+    oled.print(i == cursor ? "> " : "  ");
+    oled.print(items[i]);
+  }
   oled.display();
 }
 

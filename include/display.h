@@ -8,8 +8,7 @@
 
 void displayInit();
 void displayNormal(uint8_t level, uint16_t score);
-void displayCountdown(const char* label, int secondsLeft);
-void displayFinished();
+void displayMenu(const char* const items[], uint8_t count, uint8_t cursor);
 void displayHistoryList(uint16_t scrollOffset);
 void displayBleConnecting();
 void displayBleConnected();

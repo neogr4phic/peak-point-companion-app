@@ -14,24 +14,29 @@ static bool longPressTriggered = false;
 // Application states
 enum AppState {
   STATE_NORMAL,
-  STATE_FINISHING,
+  STATE_MENU,
   STATE_FINISHED,
-  STATE_BLE_PENDING,
   STATE_BLE
 };
 static AppState appState = STATE_NORMAL;
-static unsigned long finishingStartTime = 0;
-static unsigned long finishedDisplayTime = 0;
 static unsigned long lastDisplayUpdate = 0;
 static uint16_t historyScrollOffset = 0;
+
+// Menu
+enum MenuContext { MENU_CTX_NORMAL, MENU_CTX_FINISHED };
+static MenuContext menuContext;
+static uint8_t menuCursor = 0;
+
+static const char* menuItemsNormal[]   = { "Finish day",   "[cancel]" };
+static const char* menuItemsFinished[] = { "Sync via BLE", "[cancel]" };
 
 // ─── Button helper ────────────────────────────────────────────────────────────
 enum ButtonEvent { BTN_NONE, BTN_SHORT_PRESS, BTN_LONG_PRESS };
 
 static ButtonEvent processButton(bool current, unsigned long now) {
   if (current && !buttonPressed) {
-    buttonPressed    = true;
-    buttonPressStart = now;
+    buttonPressed      = true;
+    buttonPressStart   = now;
     longPressTriggered = false;
     return BTN_NONE;
   }
@@ -64,19 +69,23 @@ void loop() {
 
   // Always tick encoder for accurate position tracking
   int8_t rotation = encoderReadRotation();
-
-  // Apply rotation to selectedLevel only in STATE_NORMAL
-  if (appState == STATE_NORMAL && rotation != 0) {
-    int newLevel = (int)selectedLevel + (int)rotation;
-    selectedLevel = (uint8_t)constrain(newLevel, LEVEL_MIN, LEVEL_MAX);
-  }
   bool currentButtonState = encoderButtonPressed();
 
   switch (appState) {
     case STATE_NORMAL: {
+      // Encoder adjusts selectedLevel
+      if (rotation != 0) {
+        int newLevel = (int)selectedLevel + (int)rotation;
+        selectedLevel = (uint8_t)constrain(newLevel, LEVEL_MIN, LEVEL_MAX);
+      }
+
       ButtonEvent btn = processButton(currentButtonState, now);
       if (btn == BTN_SHORT_PRESS) { submitLevel(); }
-      if (btn == BTN_LONG_PRESS)  { appState = STATE_FINISHING; finishingStartTime = now; }
+      if (btn == BTN_LONG_PRESS) {
+        menuContext = MENU_CTX_NORMAL;
+        menuCursor  = 0;
+        appState    = STATE_MENU;
+      }
 
       if (now - lastDisplayUpdate >= DISPLAY_UPDATE_INTERVAL_MS) {
         displayNormal(selectedLevel, dayScoreCounter);
@@ -85,77 +94,67 @@ void loop() {
       break;
     }
 
-    case STATE_FINISHING: {
-      // Cancel if button released before countdown completes
-      if (!currentButtonState) {
-        appState = STATE_NORMAL;
-        buttonPressed = false;
-        longPressTriggered = false;
-        lastDisplayUpdate = 0;
-        break;
+    case STATE_MENU: {
+      const char* const* items = (menuContext == MENU_CTX_NORMAL)
+                                 ? menuItemsNormal
+                                 : menuItemsFinished;
+
+      // Encoder moves cursor between the two items
+      if (rotation != 0) {
+        int newCursor = (int)menuCursor + (int)rotation;
+        menuCursor = (uint8_t)constrain(newCursor, 0, 1);
       }
 
-      unsigned long elapsed = now - finishingStartTime;
-      int secondsLeft = FINISHING_COUNTDOWN_S - (int)(elapsed / 1000);
+      ButtonEvent btn = processButton(currentButtonState, now);
+      if (btn == BTN_SHORT_PRESS) {
+        if (menuCursor == 0) {
+          // Action item selected
+          if (menuContext == MENU_CTX_NORMAL) {
+            historyScrollOffset = 0;
+            appState = STATE_FINISHED;
+          } else {
+            bleStart();
+            appState = STATE_BLE;
+          }
+        } else {
+          // [cancel] selected — return to previous state
+          appState = (menuContext == MENU_CTX_NORMAL) ? STATE_NORMAL : STATE_FINISHED;
+        }
+        lastDisplayUpdate = 0;
+      }
 
-      if (secondsLeft <= 0) {
-        appState = STATE_FINISHED;
-        historyScrollOffset = 0;
-        finishedDisplayTime = now;
-        displayFinished();
-      } else {
-        displayCountdown("finishing day in", secondsLeft);
+      if (now - lastDisplayUpdate >= DISPLAY_UPDATE_INTERVAL_MS) {
+        displayMenu(items, 2, menuCursor);
+        lastDisplayUpdate = now;
       }
       break;
     }
 
     case STATE_FINISHED: {
-      bool showingFinishedMsg = (now - finishedDisplayTime < FINISHED_MSG_DURATION_MS);
-
-      if (!showingFinishedMsg) {
-        // Scroll history list with encoder
-        if (rotation != 0) {
-          int newOffset = (int)historyScrollOffset + (int)rotation;
-          int maxOffset = (int)dayScoreHistoryCount - HISTORY_VISIBLE_ROWS;
-          if (maxOffset < 0) maxOffset = 0;
-          historyScrollOffset = (uint16_t)constrain(newOffset, 0, maxOffset);
-        }
-
-        if (now - lastDisplayUpdate >= DISPLAY_UPDATE_INTERVAL_MS) {
-          displayHistoryList(historyScrollOffset);
-          lastDisplayUpdate = now;
-        }
-
-        // Long press in FINISHED to trigger BLE
-        ButtonEvent btn = processButton(currentButtonState, now);
-        if (btn == BTN_LONG_PRESS) { appState = STATE_BLE_PENDING; finishingStartTime = now; }
-      }
-      break;
-    }
-
-    case STATE_BLE_PENDING: {
-      // Cancel if button released before countdown completes
-      if (!currentButtonState) {
-        appState = STATE_FINISHED;
-        buttonPressed = false;
-        longPressTriggered = false;
-        lastDisplayUpdate = 0;
-        break;
+      // Encoder scrolls history list
+      if (rotation != 0) {
+        int newOffset = (int)historyScrollOffset + (int)rotation;
+        int maxOffset = (int)dayScoreHistoryCount - HISTORY_VISIBLE_ROWS;
+        if (maxOffset < 0) maxOffset = 0;
+        historyScrollOffset = (uint16_t)constrain(newOffset, 0, maxOffset);
       }
 
-      unsigned long elapsed = now - finishingStartTime;
-      int secondsLeft = BLE_COUNTDOWN_S - (int)(elapsed / 1000);
+      ButtonEvent btn = processButton(currentButtonState, now);
+      if (btn == BTN_LONG_PRESS) {
+        menuContext = MENU_CTX_FINISHED;
+        menuCursor  = 0;
+        appState    = STATE_MENU;
+      }
 
-      if (secondsLeft <= 0) {
-        appState = STATE_BLE;
-      } else {
-        displayCountdown("BLE transmission in", secondsLeft);
+      if (now - lastDisplayUpdate >= DISPLAY_UPDATE_INTERVAL_MS) {
+        displayHistoryList(historyScrollOffset);
+        lastDisplayUpdate = now;
       }
       break;
     }
 
     case STATE_BLE: {
-      // BLE active - drive BLE state machine; reset day when done
+      // BLE active — drive BLE state machine; reset day when done
       if (bleUpdate()) {
         resetDay();
         appState = STATE_NORMAL;

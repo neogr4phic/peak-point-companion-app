@@ -27,13 +27,10 @@
 #define MAX_HISTORY_ENTRIES   100   // Max entries in dayScoreHistory[]
 
 // =============================================================================
-// Timing — Button & Countdowns  (all values in milliseconds)
+// Timing — Button  (all values in milliseconds)
 // =============================================================================
 #define BTN_DEBOUNCE_MS           50    // Min press duration to count as a short press
 #define BTN_LONG_PRESS_MS         500   // Hold duration before long-press activates
-#define FINISHING_COUNTDOWN_S     3     // "finishing day in <N>" countdown length (seconds)
-#define BLE_COUNTDOWN_S           3     // "BLE transmission in <N>" countdown length (seconds)
-#define FINISHED_MSG_DURATION_MS  1500  // How long "Day finished!" stays on screen
 
 // =============================================================================
 // Timing — Display Refresh
