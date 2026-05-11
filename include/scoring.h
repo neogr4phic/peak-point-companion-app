@@ -17,5 +17,6 @@ extern uint8_t dayScoreHistoryCount;
 
 void submitLevel();
 void resetDay();
+void deleteHistoryEntry(uint8_t index);
 
 #endif

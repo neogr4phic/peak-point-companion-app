@@ -116,7 +116,11 @@ Flow:
     → select "Finish day" → STATE_FINISHED
     → select "[cancel]"  → STATE_NORMAL
   STATE_FINISHED
+    → short press (history not empty) → STATE_MENU (context: DELETE)
     → long-press (≥500ms) → STATE_MENU (context: FINISHED)
+  STATE_MENU (context: DELETE)
+    → select "Delete"    → delete top visible entry, back to STATE_FINISHED
+    → select "[cancel]"  → STATE_FINISHED
   STATE_MENU (context: FINISHED)
     → select "Sync via BLE" → STATE_BLE
     → select "[cancel]"    → STATE_FINISHED
@@ -126,12 +130,13 @@ Flow:
 State descriptions:
   STATE_NORMAL    Default working state. Encoder adjusts level; short press submits.
   STATE_MENU      Context-sensitive menu. Encoder moves cursor; short press selects.
-  STATE_FINISHED  Scrollable history list. Long-press opens BLE menu.
+  STATE_FINISHED  Scrollable history list. Short press deletes top entry; long-press opens BLE menu.
   STATE_BLE       BLE advertising, connecting, syncing. No encoder input.
 
 Menu contents by context:
   MENU_CTX_NORMAL    item 0: "Finish day"   item 1: "[cancel]"
   MENU_CTX_FINISHED  item 0: "Sync via BLE" item 1: "[cancel]"
+  MENU_CTX_DELETE    item 0: "Delete"       item 1: "[cancel]"
 
 
 ## 7. Functional Requirements
@@ -156,12 +161,23 @@ Menu contents by context:
 
 4. History review (STATE_FINISHED)
    - Displays dayScoreHistory as a vertically scrollable list
-   - Two rows visible at a time; each row: "HH:MM:SS  L<N>"
+   - Two rows visible at a time
+   - Top row: "> HH:MM:SS  L<N>" — marked as selected; short press targets this entry
+   - Bottom row: "  HH:MM:SS  L<N>"
    - Encoder scrolls the list
    - Triangle up (top-right): visible when scrolling up is possible
    - Triangle down (bottom-right): visible when scrolling down is possible
 
-5. Day reset
+5. Delete history entry (short press in STATE_FINISHED)
+   - Short press opens STATE_MENU (context: DELETE) targeting the top visible entry
+   - Menu shows: "> Delete" and "  [cancel]"
+   - Selecting "Delete" removes the entry from dayScoreHistory, subtracts its
+     points from dayScoreCounter (floor 0), and returns to STATE_FINISHED
+   - historyScrollOffset is clamped after deletion to remain in valid range
+   - Selecting "[cancel]" returns to STATE_FINISHED without changes
+   - Short press does nothing if dayScoreHistory is empty
+
+6. Day reset
    dayScoreCounter, dayScoreHistory, and selectedLevel reset to initial
    values after BLE sync completes.
 
@@ -219,6 +235,12 @@ Font sizes:
 Menu layout (STATE_MENU):
   Row 0  y=6   ">" or " " + item text
   Row 1  y=20  ">" or " " + item text
+
+History list layout (STATE_FINISHED):
+  Row 0  y=4   "> HH:MM:SS  L<N>"  — top entry, targeted by short press
+  Row 1  y=20  "  HH:MM:SS  L<N>"
+  Top-right triangle: visible when scrollOffset > 0
+  Bottom-right triangle: visible when more entries exist below
 
 Long messages that exceed 128 px are split at the last fitting word boundary
 and rendered on two lines (y=6, y=18).

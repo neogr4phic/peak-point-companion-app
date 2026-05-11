@@ -23,12 +23,13 @@ static unsigned long lastDisplayUpdate = 0;
 static uint16_t historyScrollOffset = 0;
 
 // Menu
-enum MenuContext { MENU_CTX_NORMAL, MENU_CTX_FINISHED };
+enum MenuContext { MENU_CTX_NORMAL, MENU_CTX_FINISHED, MENU_CTX_DELETE };
 static MenuContext menuContext;
 static uint8_t menuCursor = 0;
 
 static const char* menuItemsNormal[]   = { "Finish day",   "[cancel]" };
 static const char* menuItemsFinished[] = { "Sync via BLE", "[cancel]" };
+static const char* menuItemsDelete[]   = { "Delete",       "[cancel]" };
 
 // ─── Button helper ────────────────────────────────────────────────────────────
 enum ButtonEvent { BTN_NONE, BTN_SHORT_PRESS, BTN_LONG_PRESS };
@@ -95,9 +96,9 @@ void loop() {
     }
 
     case STATE_MENU: {
-      const char* const* items = (menuContext == MENU_CTX_NORMAL)
-                                 ? menuItemsNormal
-                                 : menuItemsFinished;
+      const char* const* items = (menuContext == MENU_CTX_NORMAL)   ? menuItemsNormal
+                               : (menuContext == MENU_CTX_FINISHED) ? menuItemsFinished
+                               :                                      menuItemsDelete;
 
       // Encoder moves cursor between the two items
       if (rotation != 0) {
@@ -112,12 +113,19 @@ void loop() {
           if (menuContext == MENU_CTX_NORMAL) {
             historyScrollOffset = 0;
             appState = STATE_FINISHED;
-          } else {
+          } else if (menuContext == MENU_CTX_FINISHED) {
             bleStart();
             appState = STATE_BLE;
+          } else { // MENU_CTX_DELETE
+            deleteHistoryEntry(historyScrollOffset);
+            int maxOffset = (int)dayScoreHistoryCount - HISTORY_VISIBLE_ROWS;
+            if (maxOffset < 0) maxOffset = 0;
+            if ((int)historyScrollOffset > maxOffset)
+              historyScrollOffset = (uint16_t)maxOffset;
+            appState = STATE_FINISHED;
           }
         } else {
-          // [cancel] selected — return to previous state
+          // [cancel] — return to previous state
           appState = (menuContext == MENU_CTX_NORMAL) ? STATE_NORMAL : STATE_FINISHED;
         }
         lastDisplayUpdate = 0;
@@ -140,6 +148,11 @@ void loop() {
       }
 
       ButtonEvent btn = processButton(currentButtonState, now);
+      if (btn == BTN_SHORT_PRESS && dayScoreHistoryCount > 0) {
+        menuContext = MENU_CTX_DELETE;
+        menuCursor  = 0;
+        appState    = STATE_MENU;
+      }
       if (btn == BTN_LONG_PRESS) {
         menuContext = MENU_CTX_FINISHED;
         menuCursor  = 0;

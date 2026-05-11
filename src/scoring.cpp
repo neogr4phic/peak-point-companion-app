@@ -37,3 +37,13 @@ void resetDay() {
   dayScoreHistoryCount = 0;
   selectedLevel = LEVEL_INIT;
 }
+
+void deleteHistoryEntry(uint8_t index) {
+  if (index >= dayScoreHistoryCount) return;
+  uint16_t points = levelToPoints[dayScoreHistory[index].level];
+  dayScoreCounter = (dayScoreCounter >= points) ? dayScoreCounter - points : 0;
+  for (uint8_t i = index; i < dayScoreHistoryCount - 1; i++) {
+    dayScoreHistory[i] = dayScoreHistory[i + 1];
+  }
+  dayScoreHistoryCount--;
+}
