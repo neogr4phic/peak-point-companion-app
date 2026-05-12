@@ -42,8 +42,9 @@ void displayMenu(const char* const items[], uint8_t count, uint8_t cursor) {
   oled.setTextSize(1);
   const uint8_t rowY2[] = {6, 20};
   const uint8_t rowY3[] = {4, 14, 24};
-  const uint8_t* rowY = (count == 3) ? rowY3 : rowY2;
-  uint8_t maxRows = (count == 3) ? 3 : 2;
+  const uint8_t rowY4[] = {0, 8, 16, 24};
+  const uint8_t* rowY = (count == 4) ? rowY4 : (count == 3) ? rowY3 : rowY2;
+  uint8_t maxRows = (count >= 4) ? 4 : (count == 3) ? 3 : 2;
   for (uint8_t i = 0; i < count && i < maxRows; i++) {
     oled.setCursor(0, rowY[i]);
     oled.print(i == cursor ? "> " : "  ");
@@ -52,9 +53,8 @@ void displayMenu(const char* const items[], uint8_t count, uint8_t cursor) {
   oled.display();
 }
 
-// Renders msg centered on one line. If it is too wide for the screen,
-// finds the last space that allows the first part to fit and splits there.
-static void displayAutoText(const char* msg) {
+// Renders msg centered on one line; auto-splits at a word boundary if too wide.
+void displayMessage(const char* msg) {
   oled.clearDisplay();
   oled.setTextSize(1);
 
@@ -112,23 +112,68 @@ static void displayAutoText(const char* msg) {
 }
 
 void displayBleConnecting() {
-  displayAutoText("Connecting to Smartphone...");
+  displayMessage("Connecting to Smartphone...");
 }
 
 void displayBleConnected() {
-  displayAutoText("Smartphone connected!");
+  displayMessage("Smartphone connected!");
 }
 
 void displayBleSyncing() {
-  displayAutoText("Syncing data...");
+  displayMessage("Syncing data...");
 }
 
 void displayBleSyncDone() {
-  displayAutoText("Sync finished!");
+  displayMessage("Sync finished!");
 }
 
 void displayBleError() {
-  displayAutoText("Bluetooth error!");
+  displayMessage("Bluetooth error!");
+}
+
+// ── Confetti / final score ──────────────────────────────────────────────────
+struct Confetti { uint8_t x; int8_t y; uint8_t speed; };
+static Confetti confettiParticles[12];
+static bool confettiInited = false;
+
+void displayFinalScoreReset() {
+  confettiInited = false;
+}
+
+void displayFinalScore(uint16_t score) {
+  if (!confettiInited) {
+    for (uint8_t i = 0; i < 12; i++) {
+      confettiParticles[i].x     = (i * 11) % 128;
+      confettiParticles[i].y     = (int8_t)((i * 7) % 32);
+      confettiParticles[i].speed = 1 + (i % 2);
+    }
+    confettiInited = true;
+  }
+
+  oled.clearDisplay();
+
+  // Animate and draw confetti pixels
+  for (uint8_t i = 0; i < 12; i++) {
+    confettiParticles[i].y += confettiParticles[i].speed;
+    if (confettiParticles[i].y >= 32) {
+      confettiParticles[i].y = -2;
+      confettiParticles[i].x = (confettiParticles[i].x * 37 + 17) % 128;
+    }
+    if (confettiParticles[i].y >= 0) {
+      oled.drawPixel(confettiParticles[i].x,
+                     (uint8_t)confettiParticles[i].y, SSD1306_WHITE);
+    }
+  }
+
+  // Score centered, textSize(3) = 18x24 px per char
+  oled.setTextSize(3);
+  char buf[5];
+  snprintf(buf, sizeof(buf), "%u", score);
+  int16_t scoreW = (int16_t)strlen(buf) * 18;
+  oled.setCursor((SCREEN_WIDTH - scoreW) / 2, 4);
+  oled.print(buf);
+
+  oled.display();
 }
 
 void displayHistoryList(uint16_t scrollOffset) {

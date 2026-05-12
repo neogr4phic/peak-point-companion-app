@@ -15,7 +15,9 @@ static bool longPressTriggered = false;
 enum AppState {
   STATE_NORMAL,
   STATE_MENU,
-  STATE_FINISHED,
+  STATE_HISTORY,
+  STATE_SCORE,
+  STATE_FLASH,
   STATE_BLE
 };
 static AppState appState = STATE_NORMAL;
@@ -23,14 +25,27 @@ static unsigned long lastDisplayUpdate = 0;
 static uint16_t historyScrollOffset = 0;
 
 // Menu
-enum MenuContext { MENU_CTX_NORMAL, MENU_CTX_FINISHED, MENU_CTX_DELETE };
+enum MenuContext { MENU_CTX_NORMAL, MENU_CTX_ENTRY, MENU_CTX_SCORE };
 static MenuContext menuContext;
 static uint8_t menuCursor = 0;
 
-static const char* menuItemsNormal2[]  = { "Finish day",                    "[cancel]" };
-static const char* menuItemsNormal3[]  = { "Finish day", "Delete last", "[cancel]" };
-static const char* menuItemsFinished[] = { "Sync via BLE",              "[cancel]" };
-static const char* menuItemsDelete[]   = { "Delete",                    "[cancel]" };
+static const char* menuItemsNormal2[] = { "Finish day",       "Back" };
+static const char* menuItemsNormal4[] = { "Finish day",       "Delete last", "Edit scores", "Back" };
+static const char* menuItemsEntry[]   = { "Delete selection", "Delete all",  "Scroll list", "Back" };
+static const char* menuItemsScore[]   = { "Transmit score",   "Dismiss score" };
+
+// Flash state
+static const char*  flashMsg         = nullptr;
+static AppState     flashReturnState = STATE_NORMAL;
+static unsigned long flashUntil      = 0;
+
+static void enterFlash(const char* msg, AppState returnTo, unsigned long now) {
+  flashMsg         = msg;
+  flashReturnState = returnTo;
+  flashUntil       = now + FLASH_DURATION_MS;
+  appState         = STATE_FLASH;
+  lastDisplayUpdate = 0;
+}
 
 // ─── Button helper ────────────────────────────────────────────────────────────
 enum ButtonEvent { BTN_NONE, BTN_SHORT_PRESS, BTN_LONG_PRESS };
@@ -98,10 +113,18 @@ void loop() {
 
     case STATE_MENU: {
       bool normalHasHistory = (menuContext == MENU_CTX_NORMAL) && (dayScoreHistoryCount > 0);
-      const char* const* items = (menuContext == MENU_CTX_NORMAL)   ? (normalHasHistory ? menuItemsNormal3 : menuItemsNormal2)
-                               : (menuContext == MENU_CTX_FINISHED) ? menuItemsFinished
-                               :                                      menuItemsDelete;
-      uint8_t itemCount = normalHasHistory ? 3 : 2;
+      const char* const* items;
+      uint8_t itemCount;
+      if (menuContext == MENU_CTX_NORMAL) {
+        items     = normalHasHistory ? menuItemsNormal4 : menuItemsNormal2;
+        itemCount = normalHasHistory ? 4 : 2;
+      } else if (menuContext == MENU_CTX_ENTRY) {
+        items     = menuItemsEntry;
+        itemCount = 4;
+      } else { // MENU_CTX_SCORE
+        items     = menuItemsScore;
+        itemCount = 2;
+      }
 
       // Encoder moves cursor
       if (rotation != 0) {
@@ -112,27 +135,46 @@ void loop() {
       ButtonEvent btn = processButton(currentButtonState, now);
       if (btn == BTN_SHORT_PRESS) {
         if (menuContext == MENU_CTX_NORMAL) {
-          if (menuCursor == 0) {                           // "Finish day"
-            historyScrollOffset = 0;
-            appState = STATE_FINISHED;
-          } else if (menuCursor == 1 && normalHasHistory) { // "Delete last"
+          if (menuCursor == 0) {                              // "Finish day"
+            displayFinalScoreReset();
+            appState = STATE_SCORE;
+          } else if (menuCursor == 1 && normalHasHistory) {  // "Delete last"
             deleteHistoryEntry(dayScoreHistoryCount - 1);
             appState = STATE_NORMAL;
-          } else {                                          // "[cancel]"
+          } else if (menuCursor == 2 && normalHasHistory) {  // "Edit scores"
+            historyScrollOffset = 0;
+            appState = STATE_HISTORY;
+          } else {                                            // "Back"
             appState = STATE_NORMAL;
           }
-        } else if (menuContext == MENU_CTX_FINISHED) {
-          if (menuCursor == 0) { bleStart(); appState = STATE_BLE; }
-          else { appState = STATE_FINISHED; }
-        } else { // MENU_CTX_DELETE
-          if (menuCursor == 0) {
+        } else if (menuContext == MENU_CTX_ENTRY) {
+          if (menuCursor == 0) {                              // "Delete selection"
             deleteHistoryEntry(historyScrollOffset);
             int maxOffset = (int)dayScoreHistoryCount - HISTORY_VISIBLE_ROWS;
             if (maxOffset < 0) maxOffset = 0;
             if ((int)historyScrollOffset > maxOffset)
               historyScrollOffset = (uint16_t)maxOffset;
+            enterFlash("Score deleted", STATE_HISTORY, now);
+          } else if (menuCursor == 1) {                      // "Delete all"
+            clearHistory();
+            menuContext = MENU_CTX_NORMAL;
+            menuCursor  = 0;
+            enterFlash("List deleted", STATE_MENU, now);
+          } else if (menuCursor == 2) {                      // "Scroll list"
+            appState = STATE_HISTORY;
+          } else {                                            // "Back"
+            menuContext = MENU_CTX_NORMAL;
+            menuCursor  = 0;
+            appState    = STATE_MENU;
           }
-          appState = STATE_FINISHED;
+        } else { // MENU_CTX_SCORE
+          if (menuCursor == 0) {                              // "Transmit score"
+            bleStart();
+            appState = STATE_BLE;
+          } else {                                            // "Dismiss score"
+            resetDay();
+            appState = STATE_NORMAL;
+          }
         }
         lastDisplayUpdate = 0;
       }
@@ -144,7 +186,7 @@ void loop() {
       break;
     }
 
-    case STATE_FINISHED: {
+    case STATE_HISTORY: {
       // Encoder scrolls history list
       if (rotation != 0) {
         int newOffset = (int)historyScrollOffset + (int)rotation;
@@ -155,18 +197,42 @@ void loop() {
 
       ButtonEvent btn = processButton(currentButtonState, now);
       if (btn == BTN_SHORT_PRESS && dayScoreHistoryCount > 0) {
-        menuContext = MENU_CTX_DELETE;
+        menuContext = MENU_CTX_ENTRY;
         menuCursor  = 0;
         appState    = STATE_MENU;
       }
-      if (btn == BTN_LONG_PRESS) {
-        menuContext = MENU_CTX_FINISHED;
-        menuCursor  = 0;
-        appState    = STATE_MENU;
-      }
+      // No long-press in STATE_HISTORY
 
       if (now - lastDisplayUpdate >= DISPLAY_UPDATE_INTERVAL_MS) {
         displayHistoryList(historyScrollOffset);
+        lastDisplayUpdate = now;
+      }
+      break;
+    }
+
+    case STATE_SCORE: {
+      ButtonEvent btn = processButton(currentButtonState, now);
+      if (btn == BTN_SHORT_PRESS) {
+        menuContext = MENU_CTX_SCORE;
+        menuCursor  = 0;
+        appState    = STATE_MENU;
+      }
+      // No long-press in STATE_SCORE
+
+      if (now - lastDisplayUpdate >= DISPLAY_UPDATE_INTERVAL_MS) {
+        displayFinalScore(dayScoreCounter);
+        lastDisplayUpdate = now;
+      }
+      break;
+    }
+
+    case STATE_FLASH: {
+      // No encoder or button input accepted during flash
+      if (now >= flashUntil) {
+        appState = flashReturnState;
+        lastDisplayUpdate = 0;
+      } else if (now - lastDisplayUpdate >= DISPLAY_UPDATE_INTERVAL_MS) {
+        displayMessage(flashMsg);
         lastDisplayUpdate = now;
       }
       break;

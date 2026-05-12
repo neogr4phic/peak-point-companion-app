@@ -38,6 +38,11 @@
 #define DISPLAY_UPDATE_INTERVAL_MS  50  // Loop throttle for OLED redraws (~20 FPS)
 
 // =============================================================================
+// Timing — Flash Message
+// =============================================================================
+#define FLASH_DURATION_MS          1500   // Auto-dismiss duration for feedback messages
+
+// =============================================================================
 // Timing — BLE
 // =============================================================================
 #define BLE_ADVERTISE_TIMEOUT_MS   30000  // Advertising timeout before "BLE Error!"

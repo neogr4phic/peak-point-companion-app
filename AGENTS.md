@@ -112,33 +112,43 @@ Example (JSON):
 Flow:
   STATE_NORMAL
     → long-press (≥500ms) → STATE_MENU (context: NORMAL)
-  STATE_MENU (context: NORMAL)                    [history empty: 2 items; non-empty: 3 items]
-    → select "Finish day"   → STATE_FINISHED
-    → select "Delete last"  → delete most recent entry, back to STATE_NORMAL
-    → select "[cancel]"     → STATE_NORMAL
-  STATE_FINISHED
-    → short press (history not empty) → STATE_MENU (context: DELETE)
-    → long-press (≥500ms) → STATE_MENU (context: FINISHED)
-  STATE_MENU (context: DELETE)
-    → select "Delete"    → delete top visible entry, back to STATE_FINISHED
-    → select "[cancel]"  → STATE_FINISHED
-  STATE_MENU (context: FINISHED)
-    → select "Sync via BLE" → STATE_BLE
-    → select "[cancel]"    → STATE_FINISHED
+  STATE_MENU (context: NORMAL)                    [history empty: 2 items; non-empty: 4 items]
+    → select "Finish day"      → STATE_SCORE
+    → select "Delete last"    → delete most recent entry → STATE_NORMAL
+    → select "Edit scores"    → STATE_HISTORY
+    → select "Back"           → STATE_NORMAL
+  STATE_HISTORY
+    → short press (history not empty) → STATE_MENU (context: ENTRY)
+  STATE_MENU (context: ENTRY)
+    → select "Delete selection" → delete top visible entry → flash("Score deleted") → STATE_HISTORY
+    → select "Delete all"       → clearHistory() → flash("List deleted") → STATE_MENU (context: NORMAL)
+    → select "Scroll list"      → STATE_HISTORY
+    → select "Back"             → STATE_MENU (context: NORMAL)
+  STATE_SCORE
+    → short press → STATE_MENU (context: SCORE)
+  STATE_MENU (context: SCORE)
+    → select "Transmit score" → STATE_BLE
+    → select "Dismiss score"  → resetDay() → STATE_NORMAL
+  STATE_FLASH
+    → auto-dismiss after 1500 ms → stored return state
   STATE_BLE
     → sync complete or timeout → resetDay() → STATE_NORMAL
 
 State descriptions:
   STATE_NORMAL    Default working state. Encoder adjusts level; short press submits.
   STATE_MENU      Context-sensitive menu. Encoder moves cursor; short press selects.
-  STATE_FINISHED  Scrollable history list. Short press deletes top entry; long-press opens BLE menu.
+  STATE_HISTORY   Scrollable history list. Short press opens entry menu.
+  STATE_SCORE     Full-screen final score with confetti animation. Short press opens score menu.
+  STATE_FLASH     Auto-dismissing feedback message. No input accepted.
   STATE_BLE       BLE advertising, connecting, syncing. No encoder input.
 
 Menu contents by context:
-  MENU_CTX_NORMAL (history empty)     item 0: "Finish day"   item 1: "[cancel]"
-  MENU_CTX_NORMAL (history non-empty) item 0: "Finish day"   item 1: "Delete last"  item 2: "[cancel]"
-  MENU_CTX_FINISHED                   item 0: "Sync via BLE" item 1: "[cancel]"
-  MENU_CTX_DELETE                     item 0: "Delete"       item 1: "[cancel]"
+  MENU_CTX_NORMAL (history empty)     item 0: "Finish day"       item 1: "Back"
+  MENU_CTX_NORMAL (history non-empty) item 0: "Finish day"       item 1: "Delete last"
+                                      item 2: "Edit scores"      item 3: "Back"
+  MENU_CTX_ENTRY                      item 0: "Delete selection" item 1: "Delete all"
+                                      item 2: "Scroll list"      item 3: "Back"
+  MENU_CTX_SCORE                      item 0: "Transmit score"   item 1: "Dismiss score"
 
 
 ## 7. Functional Requirements
@@ -150,21 +160,23 @@ Menu contents by context:
    Counter-clockwise decrements it (min 1).
    The level is not reset after submitting.
 
-2. Submit (short press)
+2. Submit (short press in STATE_NORMAL)
    Adds levelToPoints[selectedLevel] to dayScoreCounter (clamped to 9999).
    Appends a timestamped entry to dayScoreHistory.
 
-3. Finish day / Delete last (long-press in STATE_NORMAL)
+3. Options menu (long-press in STATE_NORMAL)
    - After 500 ms hold, opens STATE_MENU (context: NORMAL)
-   - When history is empty:     2-item menu: "> Finish day" / "  [cancel]"
-   - When history non-empty:    3-item menu: "> Finish day" / "  Delete last" / "  [cancel]"
-   - Encoder moves cursor between items; short press selects
-   - Selecting "Finish day" transitions immediately to STATE_FINISHED
-   - Selecting "Delete last" removes the most recent history entry, subtracts its
-     points from dayScoreCounter (floor 0), and returns to STATE_NORMAL
-   - Selecting "[cancel]" returns to STATE_NORMAL
+   - When history is empty:     2-item menu: "> Finish day" / "  Back"
+   - When history non-empty:    4-item menu: "> Finish day" / "  Delete last" /
+                                             "  Edit scores" / "  Back"
+   - Encoder moves cursor; short press selects
+   - "Finish day"   → STATE_SCORE (full-screen achievement display)
+   - "Delete last"  → deletes most recent history entry, subtracts its points
+                       from dayScoreCounter (floor 0), returns to STATE_NORMAL
+   - "Edit scores"  → historyScrollOffset=0; enters STATE_HISTORY
+   - "Back"         → STATE_NORMAL
 
-4. History review (STATE_FINISHED)
+4. History browser (STATE_HISTORY)
    - Displays dayScoreHistory as a vertically scrollable list
    - Two rows visible at a time
    - Top row: "> HH:MM:SS  L<N>" — marked as selected; short press targets this entry
@@ -172,19 +184,36 @@ Menu contents by context:
    - Encoder scrolls the list
    - Triangle up (top-right): visible when scrolling up is possible
    - Triangle down (bottom-right): visible when scrolling down is possible
+   - No long-press; navigation back is via "Back" in the entry menu
 
-5. Delete history entry (short press in STATE_FINISHED)
-   - Short press opens STATE_MENU (context: DELETE) targeting the top visible entry
-   - Menu shows: "> Delete" and "  [cancel]"
-   - Selecting "Delete" removes the entry from dayScoreHistory, subtracts its
-     points from dayScoreCounter (floor 0), and returns to STATE_FINISHED
-   - historyScrollOffset is clamped after deletion to remain in valid range
-   - Selecting "[cancel]" returns to STATE_FINISHED without changes
+5. Entry menu (short press in STATE_HISTORY)
+   - Short press opens STATE_MENU (context: ENTRY) targeting the top visible entry
+   - 4-item menu: "> Delete selection" / "  Delete all" / "  Scroll list" / "  Back"
+   - "Delete selection": removes the targeted entry, subtracts its points from
+     dayScoreCounter (floor 0), clamps historyScrollOffset, shows flash("Score deleted"),
+     returns to STATE_HISTORY
+   - "Delete all": calls clearHistory() (zeros counter and history), shows
+     flash("List deleted"), returns to STATE_MENU (context: NORMAL)
+   - "Scroll list": returns to STATE_HISTORY
+   - "Back": returns to STATE_MENU (context: NORMAL)
    - Short press does nothing if dayScoreHistory is empty
 
-6. Day reset
+6. Final score (STATE_SCORE)
+   - Displays dayScoreCounter full-screen at textSize(3) with a confetti animation
+   - Short press opens STATE_MENU (context: SCORE)
+   - 2-item menu: "> Transmit score" / "  Dismiss score"
+   - "Transmit score": starts BLE advertising → STATE_BLE
+   - "Dismiss score": calls resetDay() → STATE_NORMAL
+
+7. Flash feedback (STATE_FLASH)
+   - Displays a centered message for FLASH_DURATION_MS (1500 ms)
+   - No encoder or button input accepted during this time
+   - Automatically transitions to the stored return state
+
+8. Day reset
    dayScoreCounter, dayScoreHistory, and selectedLevel reset to initial
-   values after BLE sync completes.
+   values after BLE sync completes or when "Dismiss score" is selected.
+   clearHistory() resets counter and history only (selectedLevel preserved).
 
 ### 7.2 Function 2 — Bluetooth Connection
 
@@ -203,8 +232,7 @@ UUIDs:
   Characteristic_2: 12345678-1234-1234-1234-1234567890AD
 
 BLE flow and display messages:
-  Long-press in STATE_FINISHED  →  opens STATE_MENU (context: FINISHED)
-  Select "Sync via BLE"         →  "Connecting to Smartphone..."
+  Select "Transmit score"       →  "Connecting to Smartphone..."
   Smartphone connects           →  "Smartphone connected!"
   Transmitting JSON             →  "Syncing data..."
   Write acknowledged            →  "Sync finished!"
@@ -213,7 +241,7 @@ BLE flow and display messages:
 
 Rules:
   - BLE stays off in STATE_NORMAL — power consumption must be minimal
-  - Selecting "[cancel]" in the menu returns to STATE_FINISHED without starting BLE
+  - Selecting "Dismiss score" in the menu returns to STATE_NORMAL without BLE
   - After sync completes (success or error), resetDay() is called and device
     returns to STATE_NORMAL
   - Display messages wider than 128 px are automatically split across two lines
@@ -234,21 +262,30 @@ Data format (Characteristic_1 payload):
 Font sizes:
   selectedLevel     setTextSize(3)  Float left, vertically centered
   dayScoreCounter   setTextSize(4)  Float right, vertically centered
+  Final score       setTextSize(3)  Centered horizontally, y=4
   Menu items        setTextSize(1)  Left-aligned; ">" prefix on selected item
   All other text    setTextSize(1)  Centered; auto-split if too wide
 
 Menu layout (STATE_MENU):
-  2-item menu (default):          Row 0  y=6   ">" or " " + item text
-                                  Row 1  y=20  ">" or " " + item text
-  3-item menu (MENU_CTX_NORMAL,   Row 0  y=4   ">" or " " + item text
-  history non-empty):             Row 1  y=14  ">" or " " + item text
-                                  Row 2  y=24  ">" or " " + item text
+  2-item menu:  Row 0  y=6   ">" or " " + item text
+                Row 1  y=20  ">" or " " + item text
+  3-item menu:  Row 0  y=4   ">" or " " + item text
+                Row 1  y=14  ">" or " " + item text
+                Row 2  y=24  ">" or " " + item text
+  4-item menu:  Row 0  y=0   ">" or " " + item text
+                Row 1  y=8   ">" or " " + item text
+                Row 2  y=16  ">" or " " + item text
+                Row 3  y=24  ">" or " " + item text
 
-History list layout (STATE_FINISHED):
+History list layout (STATE_HISTORY):
   Row 0  y=4   "> HH:MM:SS  L<N>"  — top entry, targeted by short press
   Row 1  y=20  "  HH:MM:SS  L<N>"
   Top-right triangle: visible when scrollOffset > 0
   Bottom-right triangle: visible when more entries exist below
+
+Final score layout (STATE_SCORE):
+  Background: 12 confetti particles animated downward (deterministic LCG)
+  Score:       textSize(3), centered horizontally at y=4
 
 Long messages that exceed 128 px are split at the last fitting word boundary
 and rendered on two lines (y=6, y=18).

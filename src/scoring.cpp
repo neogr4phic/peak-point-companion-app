@@ -47,3 +47,8 @@ void deleteHistoryEntry(uint8_t index) {
   }
   dayScoreHistoryCount--;
 }
+
+void clearHistory() {
+  dayScoreCounter      = 0;
+  dayScoreHistoryCount = 0;
+}
