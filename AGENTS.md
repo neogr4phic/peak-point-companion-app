@@ -291,19 +291,7 @@ Long messages that exceed 128 px are split at the last fitting word boundary
 and rendered on two lines (y=6, y=18).
 
 
-## 9. Known Defects
-
-1. SOLVED  Fast encoder scrolling caused selectedLevel to randomly jump back.
-           Fixed by switching to mathertel/RotaryEncoder with TWO03 latch mode.
-
-2. SOLVED  Countdown continued after releasing the knob in STATE_FINISHING.
-           Fixed by checking button state each loop iteration.
-
-3. SOLVED  STATE_FINISHING and STATE_BLE_PENDING (3-second countdowns) replaced
-           by a context-sensitive menu (STATE_MENU). No more timed confirmations.
-
-
-## 10. Future Features — DO NOT IMPLEMENT
+## 9. Future Features — DO NOT IMPLEMENT
 
 Gamification:
 - instead of points, you will gain meters in altitude (like when climbing a mountain). The unit should be "m" for meters.

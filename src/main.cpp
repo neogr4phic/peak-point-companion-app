@@ -150,7 +150,7 @@ void loop() {
         } else if (menuContext == MENU_CTX_ENTRY) {
           if (menuCursor == 0) {                              // "Delete selection"
             deleteHistoryEntry(historyScrollOffset);
-            int maxOffset = (int)dayScoreHistoryCount - HISTORY_VISIBLE_ROWS;
+            int maxOffset = (int)dayScoreHistoryCount - 1;
             if (maxOffset < 0) maxOffset = 0;
             if ((int)historyScrollOffset > maxOffset)
               historyScrollOffset = (uint16_t)maxOffset;
@@ -190,7 +190,7 @@ void loop() {
       // Encoder scrolls history list
       if (rotation != 0) {
         int newOffset = (int)historyScrollOffset + (int)rotation;
-        int maxOffset = (int)dayScoreHistoryCount - HISTORY_VISIBLE_ROWS;
+        int maxOffset = (int)dayScoreHistoryCount - 1;
         if (maxOffset < 0) maxOffset = 0;
         historyScrollOffset = (uint16_t)constrain(newOffset, 0, maxOffset);
       }
