@@ -41,6 +41,7 @@
 // Timing — Flash Message
 // =============================================================================
 #define FLASH_DURATION_MS          1500   // Auto-dismiss duration for feedback messages
+#define SCORE_AUTO_MENU_MS         3000   // Delay before STATE_SCORE auto-opens score menu
 
 // =============================================================================
 // Timing — BLE

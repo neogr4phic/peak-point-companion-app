@@ -177,13 +177,22 @@ void displayFinalScore(uint16_t score) {
     }
   }
 
-  // Score centered, textSize(3) = 18x24 px per char
-  oled.setTextSize(3);
+  // "Great job!" label — textSize(1), centered at top
+  oled.setTextSize(1);
+  const char* label = "Great job!";
+  int16_t labelW = (int16_t)strlen(label) * 6;
+  oled.setCursor((SCREEN_WIDTH - labelW) / 2, 2);
+  oled.print(label);
+
+  // Score — textSize(2) = 12x16 px per char, centered, with rect frame
+  oled.setTextSize(2);
   char buf[5];
   snprintf(buf, sizeof(buf), "%u", score);
-  int16_t scoreW = (int16_t)strlen(buf) * 18;
-  oled.setCursor((SCREEN_WIDTH - scoreW) / 2, 4);
+  int16_t scoreW = (int16_t)strlen(buf) * 12;
+  int16_t scoreX = (SCREEN_WIDTH - scoreW) / 2;
+  oled.setCursor(scoreX, 14);
   oled.print(buf);
+  oled.drawRect(scoreX - 3, 12, scoreW + 6, 20, SSD1306_WHITE);
 
   oled.display();
 }

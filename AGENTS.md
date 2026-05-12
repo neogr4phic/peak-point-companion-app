@@ -199,8 +199,9 @@ Menu contents by context:
    - Short press does nothing if dayScoreHistory is empty
 
 6. Final score (STATE_SCORE)
-   - Displays dayScoreCounter full-screen at textSize(3) with a confetti animation
-   - Short press opens STATE_MENU (context: SCORE)
+   - Displays "Great job!" label + framed dayScoreCounter at textSize(2) with a confetti animation
+   - After SCORE_AUTO_MENU_MS (3000 ms) opens STATE_MENU (context: SCORE) automatically
+   - Short press opens STATE_MENU (context: SCORE) immediately
    - 2-item menu: "> Transmit score" / "  Dismiss score"
    - "Transmit score": starts BLE advertising → STATE_BLE
    - "Dismiss score": calls resetDay() → STATE_NORMAL
@@ -281,7 +282,8 @@ History list layout (STATE_HISTORY):
 
 Final score layout (STATE_SCORE):
   Background: 12 confetti particles animated downward (deterministic LCG)
-  Score:       textSize(3), centered horizontally at y=4
+  Label:       "Great job!" textSize(1), centered horizontally at y=2
+  Score:       textSize(2), centered horizontally at y=14; rect frame with 3 px padding
 
 Long messages that exceed 128 px are split at the last fitting word boundary
 and rendered on two lines (y=6, y=18).

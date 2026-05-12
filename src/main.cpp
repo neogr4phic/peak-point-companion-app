@@ -39,6 +39,9 @@ static const char*  flashMsg         = nullptr;
 static AppState     flashReturnState = STATE_NORMAL;
 static unsigned long flashUntil      = 0;
 
+// Score auto-menu timer
+static unsigned long scoreAutoMenuAt = 0;
+
 static void enterFlash(const char* msg, AppState returnTo, unsigned long now) {
   flashMsg         = msg;
   flashReturnState = returnTo;
@@ -137,6 +140,7 @@ void loop() {
         if (menuContext == MENU_CTX_NORMAL) {
           if (menuCursor == 0) {                              // "Finish day"
             displayFinalScoreReset();
+            scoreAutoMenuAt = now + SCORE_AUTO_MENU_MS;
             appState = STATE_SCORE;
           } else if (menuCursor == 1 && normalHasHistory) {  // "Delete last"
             deleteHistoryEntry(dayScoreHistoryCount - 1);
@@ -211,6 +215,15 @@ void loop() {
     }
 
     case STATE_SCORE: {
+      // Auto-open score menu after timeout
+      if (now >= scoreAutoMenuAt) {
+        menuContext = MENU_CTX_SCORE;
+        menuCursor  = 0;
+        appState    = STATE_MENU;
+        lastDisplayUpdate = 0;
+        break;
+      }
+
       ButtonEvent btn = processButton(currentButtonState, now);
       if (btn == BTN_SHORT_PRESS) {
         menuContext = MENU_CTX_SCORE;
