@@ -40,16 +40,28 @@ void displayNormal(uint8_t level, uint16_t score) {
 void displayMenu(const char* const items[], uint8_t count, uint8_t cursor) {
   oled.clearDisplay();
   oled.setTextSize(1);
-  const uint8_t rowY2[] = {6, 20};
-  const uint8_t rowY3[] = {4, 14, 24};
-  const uint8_t rowY4[] = {0, 8, 16, 24};
-  const uint8_t* rowY = (count == 4) ? rowY4 : (count == 3) ? rowY3 : rowY2;
-  uint8_t maxRows = (count >= 4) ? 4 : (count == 3) ? 3 : 2;
-  for (uint8_t i = 0; i < count && i < maxRows; i++) {
-    oled.setCursor(0, rowY[i]);
-    oled.print(i == cursor ? "> " : "  ");
-    oled.print(items[i]);
+
+  // Top row: selected item
+  oled.setCursor(0, 4);
+  oled.print("> ");
+  oled.print(items[cursor]);
+
+  // Bottom row: next item preview (if any)
+  if (cursor + 1 < count) {
+    oled.setCursor(0, 20);
+    oled.print("  ");
+    oled.print(items[cursor + 1]);
   }
+
+  // Triangle up: items exist above current selection
+  if (cursor > 0) {
+    oled.fillTriangle(123, 2, 119, 8, 127, 8, SSD1306_WHITE);
+  }
+  // Triangle down: items exist below the preview row
+  if (cursor + 2 < count) {
+    oled.fillTriangle(123, 29, 119, 23, 127, 23, SSD1306_WHITE);
+  }
+
   oled.display();
 }
 

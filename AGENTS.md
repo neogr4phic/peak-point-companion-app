@@ -267,15 +267,11 @@ Font sizes:
   All other text    setTextSize(1)  Centered; auto-split if too wide
 
 Menu layout (STATE_MENU):
-  2-item menu:  Row 0  y=6   ">" or " " + item text
-                Row 1  y=20  ">" or " " + item text
-  3-item menu:  Row 0  y=4   ">" or " " + item text
-                Row 1  y=14  ">" or " " + item text
-                Row 2  y=24  ">" or " " + item text
-  4-item menu:  Row 0  y=0   ">" or " " + item text
-                Row 1  y=8   ">" or " " + item text
-                Row 2  y=16  ">" or " " + item text
-                Row 3  y=24  ">" or " " + item text
+  Always 2 rows visible regardless of total item count (2-item scroll window).
+  Row 0  y=4   "> " + items[cursor]      — selected item
+  Row 1  y=20  "  " + items[cursor+1]    — next item preview (hidden when cursor is last)
+  Top-right triangle:    visible when cursor > 0 (items exist above)
+  Bottom-right triangle: visible when cursor+2 < count (items exist below preview row)
 
 History list layout (STATE_HISTORY):
   Row 0  y=4   "> HH:MM:SS  L<N>"  — top entry, targeted by short press
