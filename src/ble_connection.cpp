@@ -92,10 +92,23 @@ bool bleUpdate() {
     if (!bleDataSent) {
       bleDataSent = true;
 
-      // Show connected message briefly
+      // Show connected message and wait until the phone has enabled CCCD
+      // (subscribed to notifications) before writing, so the notification
+      // is not lost due to a discovery/setup race condition on the central.
       displayBleConnected();
       writeStatus("connected");
-      delay(BLE_CONNECTED_DISPLAY_MS);
+
+      unsigned long cccdWait = millis();
+      while (!daysHistoryChar.notifyEnabled()) {
+        if (millis() - cccdWait > 5000) break; // safety timeout
+        delay(20);
+      }
+
+      // Ensure the "connected" message was visible for at least the configured time
+      unsigned long elapsed = millis() - cccdWait;
+      if (elapsed < BLE_CONNECTED_DISPLAY_MS) {
+        delay(BLE_CONNECTED_DISPLAY_MS - elapsed);
+      }
 
       // Serialize and transmit
       displayBleSyncing();
