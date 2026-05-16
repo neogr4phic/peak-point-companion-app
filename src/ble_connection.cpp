@@ -38,6 +38,11 @@ void bleInit() {
   Bluefruit.setTxPower(BLE_TX_POWER_DBM);
   Bluefruit.setName("PeakPoint");
 
+  // Disable the library's automatic connection-LED management.
+  // On XIAO nRF52840 the LED does not turn off reliably after disconnect
+  // via the auto handler; the OLED display provides all status feedback.
+  Bluefruit.autoConnLed(false);
+
   ppService.begin();
 
   // Characteristic_1: daysHistory - readable, max 512 bytes
@@ -116,7 +121,12 @@ bool bleUpdate() {
 
       char jsonBuf[BLE_JSON_BUF_SIZE];
       serializeDayScoreHistory(jsonBuf, sizeof(jsonBuf));
-      bool ok = daysHistoryChar.write(jsonBuf, strlen(jsonBuf));
+
+      // write() updates the GATT attribute value (for fallback READ access).
+      // notify() sends the actual BLE notification packet to the subscribed
+      // central — without this call the phone's monitor callback never fires.
+      daysHistoryChar.write(jsonBuf, strlen(jsonBuf));
+      bool ok = daysHistoryChar.notify(jsonBuf, strlen(jsonBuf)) > 0;
 
       if (ok) {
         writeStatus("synced");

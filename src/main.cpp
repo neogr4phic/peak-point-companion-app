@@ -183,7 +183,7 @@ void loop() {
         lastDisplayUpdate = 0;
       }
 
-      if (now - lastDisplayUpdate >= DISPLAY_UPDATE_INTERVAL_MS) {
+      if (now - lastDisplayUpdate >= DISPLAY_UPDATE_INTERVAL_MS && appState == STATE_MENU) {
         displayMenu(items, itemCount, menuCursor);
         lastDisplayUpdate = now;
       }
