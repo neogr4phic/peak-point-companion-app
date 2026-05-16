@@ -144,7 +144,7 @@ void loop() {
             appState = STATE_SCORE;
           } else if (menuCursor == 1 && normalHasHistory) {  // "Delete last"
             deleteHistoryEntry(dayScoreHistoryCount - 1);
-            appState = STATE_NORMAL;
+            enterFlash("Score deleted", STATE_NORMAL, now);
           } else if (menuCursor == 2 && normalHasHistory) {  // "Edit scores"
             historyScrollOffset = 0;
             appState = STATE_HISTORY;
