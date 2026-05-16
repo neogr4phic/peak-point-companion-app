@@ -186,8 +186,8 @@ void displayFinalScore(uint16_t score) {
 
   // Score — textSize(2) = 12x16 px per char, centered, with rect frame
   oled.setTextSize(2);
-  char buf[5];
-  snprintf(buf, sizeof(buf), "%u", score);
+  char buf[7];
+  snprintf(buf, sizeof(buf), "%um", score);
   int16_t scoreW = (int16_t)strlen(buf) * 12;
   int16_t scoreX = (SCREEN_WIDTH - scoreW) / 2;
   oled.setCursor(scoreX, 14);
