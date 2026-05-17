@@ -18,7 +18,8 @@ enum AppState {
   STATE_HISTORY,
   STATE_SCORE,
   STATE_FLASH,
-  STATE_BLE
+  STATE_BLE,
+  STATE_BLE_ABORT_MENU
 };
 static AppState appState = STATE_NORMAL;
 static unsigned long lastDisplayUpdate = 0;
@@ -29,10 +30,11 @@ enum MenuContext { MENU_CTX_NORMAL, MENU_CTX_ENTRY, MENU_CTX_SCORE };
 static MenuContext menuContext;
 static uint8_t menuCursor = 0;
 
-static const char* menuItemsNormal2[] = { "Finish day",       "Back" };
-static const char* menuItemsNormal4[] = { "Finish day",       "Delete last", "Edit scores", "Back" };
-static const char* menuItemsEntry[]   = { "Delete selection", "Delete all",  "Scroll list", "Back" };
-static const char* menuItemsScore[]   = { "Transmit score",   "Dismiss score" };
+static const char* menuItemsNormal2[] = { MENU_FINISH_DAY,       MENU_BACK };
+static const char* menuItemsNormal4[] = { MENU_FINISH_DAY,       MENU_DELETE_LAST, MENU_EDIT_SCORES, MENU_BACK };
+static const char* menuItemsEntry[]   = { MENU_DELETE_SELECTION, MENU_DELETE_ALL,  MENU_SCROLL_LIST, MENU_BACK };
+static const char* menuItemsScore[]   = { MENU_TRANSMIT_SCORE,   MENU_DISMISS_SCORE, MENU_BACK };
+static const char* menuItemsBleAbort[] = { MENU_ABORT, MENU_BACK };
 
 // Flash state
 static const char*  flashMsg         = nullptr;
@@ -126,7 +128,7 @@ void loop() {
         itemCount = 4;
       } else { // MENU_CTX_SCORE
         items     = menuItemsScore;
-        itemCount = 2;
+        itemCount = 3;
       }
 
       // Encoder moves cursor
@@ -144,7 +146,7 @@ void loop() {
             appState = STATE_SCORE;
           } else if (menuCursor == 1 && normalHasHistory) {  // "Delete last"
             deleteHistoryEntry(dayScoreHistoryCount - 1);
-            enterFlash("Score deleted", STATE_NORMAL, now);
+            enterFlash(MSG_SCORE_DELETED, STATE_NORMAL, now);
           } else if (menuCursor == 2 && normalHasHistory) {  // "Edit scores"
             historyScrollOffset = 0;
             appState = STATE_HISTORY;
@@ -158,12 +160,12 @@ void loop() {
             if (maxOffset < 0) maxOffset = 0;
             if ((int)historyScrollOffset > maxOffset)
               historyScrollOffset = (uint16_t)maxOffset;
-            enterFlash("Score deleted", STATE_HISTORY, now);
+            enterFlash(MSG_SCORE_DELETED, STATE_HISTORY, now);
           } else if (menuCursor == 1) {                      // "Delete all"
             clearHistory();
             menuContext = MENU_CTX_NORMAL;
             menuCursor  = 0;
-            enterFlash("List deleted", STATE_MENU, now);
+            enterFlash(MSG_LIST_DELETED, STATE_MENU, now);
           } else if (menuCursor == 2) {                      // "Scroll list"
             appState = STATE_HISTORY;
           } else {                                            // "Back"
@@ -175,9 +177,13 @@ void loop() {
           if (menuCursor == 0) {                              // "Transmit score"
             bleStart();
             appState = STATE_BLE;
-          } else {                                            // "Dismiss score"
+          } else if (menuCursor == 1) {                       // "Dismiss score"
             resetDay();
             appState = STATE_NORMAL;
+          } else {                                            // "Back"
+            menuContext = MENU_CTX_NORMAL;
+            menuCursor  = 0;
+            appState    = STATE_MENU;
           }
         }
         lastDisplayUpdate = 0;
@@ -252,6 +258,16 @@ void loop() {
     }
 
     case STATE_BLE: {
+      // Allow abort while the phone is not yet connected (advertising phase only)
+      if (!bleIsConnected()) {
+        ButtonEvent btn = processButton(currentButtonState, now);
+        if (btn == BTN_SHORT_PRESS) {
+          menuCursor = 0;
+          appState = STATE_BLE_ABORT_MENU;
+          lastDisplayUpdate = 0;
+          break;
+        }
+      }
       // BLE active — drive BLE state machine; reset day when done
       if (bleUpdate()) {
         resetDay();
@@ -259,6 +275,34 @@ void loop() {
         buttonPressed = false;
         longPressTriggered = false;
         displayNormal(selectedLevel, dayScoreCounter);
+      }
+      break;
+    }
+
+    case STATE_BLE_ABORT_MENU: {
+      if (rotation != 0) {
+        int newCursor = (int)menuCursor + (int)rotation;
+        menuCursor = (uint8_t)constrain(newCursor, 0, 1);
+      }
+
+      ButtonEvent btn = processButton(currentButtonState, now);
+      if (btn == BTN_SHORT_PRESS) {
+        if (menuCursor == 0) {                              // "Abort"
+          bleStop();
+          appState = STATE_NORMAL;
+          buttonPressed = false;
+          longPressTriggered = false;
+          displayNormal(selectedLevel, dayScoreCounter);
+        } else {                                            // "Back"
+          appState = STATE_BLE;
+          displayBleConnecting();
+          lastDisplayUpdate = 0;
+        }
+      }
+
+      if (now - lastDisplayUpdate >= DISPLAY_UPDATE_INTERVAL_MS && appState == STATE_BLE_ABORT_MENU) {
+        displayMenu(menuItemsBleAbort, 2, menuCursor);
+        lastDisplayUpdate = now;
       }
       break;
     }

@@ -64,4 +64,46 @@
 #define OLED_I2C_ADDR        0x3C  // I2C address of the SSD1306 OLED
 #define HISTORY_VISIBLE_ROWS 2     // Number of history rows visible at once
 
+// =============================================================================
+// BLE Device Identity
+// =============================================================================
+#define BLE_DEVICE_NAME          "PeakPoint"
+
+// =============================================================================
+// BLE Status Strings (written to the status characteristic)
+// =============================================================================
+#define BLE_STATUS_IDLE          "idle"
+#define BLE_STATUS_ADVERTISING   "advertising"
+#define BLE_STATUS_CONNECTED     "connected"
+#define BLE_STATUS_SYNCING       "syncing"
+#define BLE_STATUS_SYNCED        "synced"
+#define BLE_STATUS_ERROR         "error"
+
+// =============================================================================
+// Display Messages
+// =============================================================================
+#define MSG_BLE_CONNECTING_L1    "Connecting...."
+#define MSG_BLE_CONNECTING_L2    "[Open PeakPoint App]"
+#define MSG_BLE_CONNECTED        "Smartphone connected!"
+#define MSG_BLE_SYNCING          "Syncing data..."
+#define MSG_BLE_SYNC_DONE        "Sync finished!"
+#define MSG_BLE_ERROR            "Bluetooth error!"
+#define MSG_SCORE_DELETED        "Score deleted"
+#define MSG_LIST_DELETED         "List deleted"
+#define MSG_FINAL_SCORE_LABEL    "Great job!"
+
+// =============================================================================
+// Menu Item Labels
+// =============================================================================
+#define MENU_FINISH_DAY          "Finish day"
+#define MENU_DELETE_LAST         "Delete last"
+#define MENU_EDIT_SCORES         "Edit scores"
+#define MENU_BACK                "Back"
+#define MENU_DELETE_SELECTION    "Delete selection"
+#define MENU_DELETE_ALL          "Delete all"
+#define MENU_SCROLL_LIST         "Scroll list"
+#define MENU_TRANSMIT_SCORE      "Transmit score"
+#define MENU_DISMISS_SCORE       "Dismiss score"
+#define MENU_ABORT               "Abort"
+
 #endif

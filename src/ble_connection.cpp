@@ -36,7 +36,7 @@ static void writeStatus(const char* value) {
 void bleInit() {
   Bluefruit.begin();
   Bluefruit.setTxPower(BLE_TX_POWER_DBM);
-  Bluefruit.setName("PeakPoint");
+  Bluefruit.setName(BLE_DEVICE_NAME);
 
   // Disable the library's automatic connection-LED management.
   // On XIAO nRF52840 the LED does not turn off reliably after disconnect
@@ -56,7 +56,7 @@ void bleInit() {
   statusChar.setPermission(SECMODE_OPEN, SECMODE_NO_ACCESS);
   statusChar.setMaxLen(BLE_STATUS_MAX_LEN);
   statusChar.begin();
-  writeStatus("idle");
+  writeStatus(BLE_STATUS_IDLE);
 
   // BLE radio stays off until bleStart() is called
   Bluefruit.Advertising.stop();
@@ -66,7 +66,7 @@ void bleStart() {
   bleStartTime = millis();
   bleDataSent  = false;
 
-  writeStatus("advertising");
+  writeStatus(BLE_STATUS_ADVERTISING);
 
   Bluefruit.Advertising.clearData();
   Bluefruit.Advertising.addFlags(BLE_GAP_ADV_FLAGS_LE_ONLY_GENERAL_DISC_MODE);
@@ -81,12 +81,16 @@ void bleStart() {
   displayBleConnecting();
 }
 
-static void bleStop() {
+void bleStop() {
   Bluefruit.Advertising.stop();
   if (Bluefruit.connected()) {
     Bluefruit.disconnect(Bluefruit.connHandle());
   }
-  writeStatus("idle");
+  writeStatus(BLE_STATUS_IDLE);
+}
+
+bool bleIsConnected() {
+  return Bluefruit.connected();
 }
 
 // Returns true when the BLE session is fully complete (success or timeout)
@@ -101,7 +105,7 @@ bool bleUpdate() {
       // (subscribed to notifications) before writing, so the notification
       // is not lost due to a discovery/setup race condition on the central.
       displayBleConnected();
-      writeStatus("connected");
+      writeStatus(BLE_STATUS_CONNECTED);
 
       unsigned long cccdWait = millis();
       while (!daysHistoryChar.notifyEnabled()) {
@@ -117,7 +121,7 @@ bool bleUpdate() {
 
       // Serialize and transmit
       displayBleSyncing();
-      writeStatus("syncing");
+      writeStatus(BLE_STATUS_SYNCING);
 
       char jsonBuf[BLE_JSON_BUF_SIZE];
       serializeDayScoreHistory(jsonBuf, sizeof(jsonBuf));
@@ -129,10 +133,10 @@ bool bleUpdate() {
       bool ok = daysHistoryChar.notify(jsonBuf, strlen(jsonBuf)) > 0;
 
       if (ok) {
-        writeStatus("synced");
+        writeStatus(BLE_STATUS_SYNCED);
         displayBleSyncDone();
       } else {
-        writeStatus("error");
+        writeStatus(BLE_STATUS_ERROR);
         displayBleError();
       }
 

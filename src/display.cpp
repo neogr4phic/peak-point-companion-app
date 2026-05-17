@@ -124,23 +124,36 @@ void displayMessage(const char* msg) {
 }
 
 void displayBleConnecting() {
-  displayMessage("Connecting to Smartphone...");
+  oled.clearDisplay();
+  oled.setTextSize(1);
+
+  int16_t x1, y1;
+  uint16_t w1, h1, w2, h2;
+  oled.getTextBounds(MSG_BLE_CONNECTING_L1, 0, 0, &x1, &y1, &w1, &h1);
+  oled.getTextBounds(MSG_BLE_CONNECTING_L2, 0, 0, &x1, &y1, &w2, &h2);
+
+  oled.setCursor((SCREEN_WIDTH - w1) / 2, 6);
+  oled.print(MSG_BLE_CONNECTING_L1);
+  oled.setCursor((SCREEN_WIDTH - w2) / 2, 20);
+  oled.print(MSG_BLE_CONNECTING_L2);
+
+  oled.display();
 }
 
 void displayBleConnected() {
-  displayMessage("Smartphone connected!");
+  displayMessage(MSG_BLE_CONNECTED);
 }
 
 void displayBleSyncing() {
-  displayMessage("Syncing data...");
+  displayMessage(MSG_BLE_SYNCING);
 }
 
 void displayBleSyncDone() {
-  displayMessage("Sync finished!");
+  displayMessage(MSG_BLE_SYNC_DONE);
 }
 
 void displayBleError() {
-  displayMessage("Bluetooth error!");
+  displayMessage(MSG_BLE_ERROR);
 }
 
 // ── Confetti / final score ──────────────────────────────────────────────────
@@ -179,7 +192,7 @@ void displayFinalScore(uint16_t score) {
 
   // "Great job!" label — textSize(1), centered at top
   oled.setTextSize(1);
-  const char* label = "Great job!";
+  const char* label = MSG_FINAL_SCORE_LABEL;
   int16_t labelW = (int16_t)strlen(label) * 6;
   oled.setCursor((SCREEN_WIDTH - labelW) / 2, 2);
   oled.print(label);
