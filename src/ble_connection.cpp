@@ -98,15 +98,14 @@ bool bleUpdate() {
     if (!bleDataSent) {
       bleDataSent = true;
 
-      // Show connected message and wait until the phone has enabled CCCD
-      // (subscribed to notifications) before writing, so the notification
-      // is not lost due to a discovery/setup race condition on the central.
+      // Wait for CCCD: central must subscribe to notifications before we
+      // write, otherwise the notification is lost in the discovery race.
       displayBleConnected();
       writeStatus(BLE_STATUS_CONNECTED);
 
       unsigned long cccdWait = millis();
       while (!daysHistoryChar.notifyEnabled()) {
-        if (millis() - cccdWait > 5000) break; // safety timeout
+        if (millis() - cccdWait > BLE_CCCD_TIMEOUT_MS) break;
         delay(20);
       }
 
@@ -120,7 +119,7 @@ bool bleUpdate() {
       displayBleSyncing();
       writeStatus(BLE_STATUS_SYNCING);
 
-      char jsonBuf[BLE_JSON_BUF_SIZE];
+      static char jsonBuf[BLE_JSON_BUF_SIZE]; // static: avoids 512 B stack alloc per call
       serializeDayScoreHistory(jsonBuf, sizeof(jsonBuf));
 
       // write() updates the GATT attribute value (for fallback READ access).

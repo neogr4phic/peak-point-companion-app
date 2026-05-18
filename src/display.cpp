@@ -37,30 +37,29 @@ void displayNormal(uint8_t level, uint16_t score) {
   oled.display();
 }
 
+// Draws up/down scroll indicator triangles in the top/bottom-right corner.
+static void displayScrollTriangles(bool canUp, bool canDown) {
+  if (canUp)   oled.fillTriangle(123, 2, 119, 8,  127, 8,  SSD1306_WHITE);
+  if (canDown) oled.fillTriangle(123, 29, 119, 23, 127, 23, SSD1306_WHITE);
+}
+
 void displayMenu(const char* const items[], uint8_t count, uint8_t cursor) {
   oled.clearDisplay();
   oled.setTextSize(1);
 
   // Top row: selected item
-  oled.setCursor(0, 4);
+  oled.setCursor(0, MENU_ROW0_Y);
   oled.print("> ");
   oled.print(items[cursor]);
 
   // Bottom row: next item preview (if any)
   if (cursor + 1 < count) {
-    oled.setCursor(0, 20);
+    oled.setCursor(0, MENU_ROW0_Y + MENU_ROW_SPACING);
     oled.print("  ");
     oled.print(items[cursor + 1]);
   }
 
-  // Triangle up: items exist above current selection
-  if (cursor > 0) {
-    oled.fillTriangle(123, 2, 119, 8, 127, 8, SSD1306_WHITE);
-  }
-  // Triangle down: items exist below the preview row
-  if (cursor + 2 < count) {
-    oled.fillTriangle(123, 29, 119, 23, 127, 23, SSD1306_WHITE);
-  }
+  displayScrollTriangles(cursor > 0, cursor + 2 < count);
 
   oled.display();
 }
@@ -158,7 +157,7 @@ void displayBleError() {
 
 // ── Confetti / final score ──────────────────────────────────────────────────
 struct Confetti { uint8_t x; int8_t y; uint8_t speed; };
-static Confetti confettiParticles[12];
+static Confetti confettiParticles[CONFETTI_COUNT];
 static bool confettiInited = false;
 
 void displayFinalScoreReset() {
@@ -167,7 +166,7 @@ void displayFinalScoreReset() {
 
 void displayFinalScore(uint16_t score) {
   if (!confettiInited) {
-    for (uint8_t i = 0; i < 12; i++) {
+    for (uint8_t i = 0; i < CONFETTI_COUNT; i++) {
       confettiParticles[i].x     = (i * 11) % 128;
       confettiParticles[i].y     = (int8_t)((i * 7) % 32);
       confettiParticles[i].speed = 1 + (i % 2);
@@ -178,11 +177,11 @@ void displayFinalScore(uint16_t score) {
   oled.clearDisplay();
 
   // Animate and draw confetti pixels
-  for (uint8_t i = 0; i < 12; i++) {
+  for (uint8_t i = 0; i < CONFETTI_COUNT; i++) {
     confettiParticles[i].y += confettiParticles[i].speed;
     if (confettiParticles[i].y >= 32) {
       confettiParticles[i].y = -2;
-      confettiParticles[i].x = (confettiParticles[i].x * 37 + 17) % 128;
+      confettiParticles[i].x = (confettiParticles[i].x * 37 + 17) % 128; // LCG: pseudo-random x-scatter on wrap
     }
     if (confettiParticles[i].y >= 0) {
       oled.drawPixel(confettiParticles[i].x,
@@ -217,25 +216,20 @@ void displayHistoryList(uint16_t scrollOffset) {
   for (uint8_t row = 0; row < HISTORY_VISIBLE_ROWS; row++) {
     uint16_t idx = scrollOffset + row;
     if (idx < dayScoreHistoryCount) {
-      char buf[24];
+      char buf[HISTORY_BUF_SIZE];
       snprintf(buf, sizeof(buf), "%c #%u  L%u",
         row == 0 ? '>' : ' ',
         (unsigned)(idx + 1),
         dayScoreHistory[idx].level);
-      oled.setCursor(0, 4 + row * 16);
+      oled.setCursor(0, MENU_ROW0_Y + row * MENU_ROW_SPACING);
       oled.print(buf);
     }
   }
 
-  // Triangle up (top-right): show when can scroll up
-  if (scrollOffset > 0) {
-    oled.fillTriangle(123, 2, 119, 8, 127, 8, SSD1306_WHITE);
-  }
-  // Triangle down (bottom-right): show when can scroll down
-  if (dayScoreHistoryCount > 1 &&
-      scrollOffset + HISTORY_VISIBLE_ROWS < (uint16_t)dayScoreHistoryCount) {
-    oled.fillTriangle(123, 29, 119, 23, 127, 23, SSD1306_WHITE);
-  }
+  displayScrollTriangles(
+    scrollOffset > 0,
+    dayScoreHistoryCount > 1 && scrollOffset + HISTORY_VISIBLE_ROWS < (uint16_t)dayScoreHistoryCount
+  );
 
   oled.display();
 }

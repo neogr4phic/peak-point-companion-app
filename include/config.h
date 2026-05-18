@@ -63,6 +63,19 @@
 // =============================================================================
 #define OLED_I2C_ADDR        0x3C  // I2C address of the SSD1306 OLED
 #define HISTORY_VISIBLE_ROWS 2     // Number of history rows visible at once
+#define MENU_ROW0_Y          4     // Y-offset of the first menu/history row (px)
+#define MENU_ROW_SPACING     16    // Vertical distance between rows (px)
+#define HISTORY_BUF_SIZE     24    // Buffer size for history entry strings
+
+// =============================================================================
+// Animation
+// =============================================================================
+#define CONFETTI_COUNT       12    // Number of confetti particles in final-score animation
+
+// =============================================================================
+// Timing — BLE CCCD
+// =============================================================================
+#define BLE_CCCD_TIMEOUT_MS  5000  // Max wait for central to subscribe (CCCD) before proceeding
 
 // =============================================================================
 // BLE Device Identity

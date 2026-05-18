@@ -43,6 +43,11 @@ static unsigned long flashUntil      = 0;
 // Score auto-menu timer
 static unsigned long scoreAutoMenuAt = 0;
 
+// Applies encoder delta to a uint8_t variable clamped to [minVal, maxVal]
+static inline void moveCursor(uint8_t& var, int8_t delta, uint8_t maxVal, uint8_t minVal = 0) {
+  var = (uint8_t)constrain((int)var + (int)delta, (int)minVal, (int)maxVal);
+}
+
 static void enterFlash(const char* msg, AppState returnTo, unsigned long now) {
   flashMsg         = msg;
   flashReturnState = returnTo;
@@ -84,6 +89,9 @@ void setup() {
   displayNormal(selectedLevel, dayScoreCounter);
 }
 
+// ─── Main loop — event-driven state machine ───────────────────────────────────
+// States: NORMAL → MENU → HISTORY / SCORE / BLE / BLE_ABORT_MENU → FLASH
+// All display redraws are rate-limited by DISPLAY_UPDATE_INTERVAL_MS.
 void loop() {
   unsigned long now = millis();
 
@@ -95,8 +103,7 @@ void loop() {
     case STATE_NORMAL: {
       // Encoder adjusts selectedLevel
       if (rotation != 0) {
-        int newLevel = (int)selectedLevel + (int)rotation;
-        selectedLevel = (uint8_t)constrain(newLevel, LEVEL_MIN, LEVEL_MAX);
+        moveCursor(selectedLevel, rotation, LEVEL_MAX, LEVEL_MIN);
       }
 
       ButtonEvent btn = processButton(currentButtonState, now);
@@ -131,8 +138,7 @@ void loop() {
 
       // Encoder moves cursor
       if (rotation != 0) {
-        int newCursor = (int)menuCursor + (int)rotation;
-        menuCursor = (uint8_t)constrain(newCursor, 0, itemCount - 1);
+        moveCursor(menuCursor, rotation, itemCount - 1);
       }
 
       ButtonEvent btn = processButton(currentButtonState, now);
@@ -279,8 +285,7 @@ void loop() {
 
     case STATE_BLE_ABORT_MENU: {
       if (rotation != 0) {
-        int newCursor = (int)menuCursor + (int)rotation;
-        menuCursor = (uint8_t)constrain(newCursor, 0, 1);
+        moveCursor(menuCursor, rotation, 1);
       }
 
       ButtonEvent btn = processButton(currentButtonState, now);
