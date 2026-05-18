@@ -3,7 +3,6 @@
 #include "display.h"
 #include "encoder.h"
 #include "scoring.h"
-#include "rtc_time.h"
 #include "ble_connection.h"
 
 // Button state
@@ -81,7 +80,6 @@ static ButtonEvent processButton(bool current, unsigned long now) {
 void setup() {
   encoderInit();
   displayInit();
-  rtcTimeInit();
   bleInit();
   displayNormal(selectedLevel, dayScoreCounter);
 }

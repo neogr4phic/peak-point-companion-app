@@ -314,7 +314,7 @@ Extended Bluetooth:
   - Detailed error messages (e.g. "Connection lost", "No device found", "Sync aborted")
   - Globally unique UUIDs generated with uuidgen (for published product)
 
-Real Time Clock (RTC):
+[ in work ] Real Time Clock (RTC):
   - Get time signal from smartphone via BLE on sync
   - Use received time to calibrate RTC_Millis drift (track millis offset)
   - Use Adafruit RTClib for battery-backed RTC hardware

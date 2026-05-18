@@ -15,18 +15,15 @@ static BLECharacteristic statusChar(PP_STATUS_UUID);
 static unsigned long bleStartTime = 0;
 static bool          bleDataSent  = false;
 
-// Serialize dayScoreHistory[] into a JSON object string
+// Serialize dayScoreHistory[] into {"n":<count>,"s":[level,...]}
 static void serializeDayScoreHistory(char* buf, size_t bufSize) {
   size_t pos = 0;
-  pos += snprintf(buf + pos, bufSize - pos, "{");
+  pos += snprintf(buf + pos, bufSize - pos, "{\"n\":%u,\"s\":[", dayScoreHistoryCount);
   for (uint8_t i = 0; i < dayScoreHistoryCount && pos < bufSize - 2; i++) {
     if (i > 0) pos += snprintf(buf + pos, bufSize - pos, ",");
-    pos += snprintf(buf + pos, bufSize - pos,
-      "\"%s\":\"%u\"",
-      dayScoreHistory[i].timestamp,
-      dayScoreHistory[i].level);
+    pos += snprintf(buf + pos, bufSize - pos, "%u", dayScoreHistory[i].level);
   }
-  snprintf(buf + pos, bufSize - pos, "}");
+  snprintf(buf + pos, bufSize - pos, "]}");
 }
 
 static void writeStatus(const char* value) {

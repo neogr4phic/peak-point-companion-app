@@ -1,5 +1,4 @@
 #include "scoring.h"
-#include "rtc_time.h"
 
 const uint16_t levelToPoints[] = {
   LEVEL_POINTS_0,
@@ -22,7 +21,6 @@ uint8_t dayScoreHistoryCount = 0;
 
 void submitLevel() {
   if (dayScoreHistoryCount < MAX_HISTORY_ENTRIES) {
-    getTimestamp(dayScoreHistory[dayScoreHistoryCount].timestamp);
     dayScoreHistory[dayScoreHistoryCount].level = selectedLevel;
     dayScoreHistoryCount++;
   }

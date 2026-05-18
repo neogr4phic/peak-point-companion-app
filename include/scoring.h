@@ -5,7 +5,6 @@
 #include "config.h"
 
 struct DayScoreEntry {
-  char timestamp[9]; // "HH:MM:SS"
   uint8_t level;
 };
 

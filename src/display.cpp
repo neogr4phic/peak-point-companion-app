@@ -218,9 +218,9 @@ void displayHistoryList(uint16_t scrollOffset) {
     uint16_t idx = scrollOffset + row;
     if (idx < dayScoreHistoryCount) {
       char buf[24];
-      snprintf(buf, sizeof(buf), "%c %s  L%u",
+      snprintf(buf, sizeof(buf), "%c #%u  L%u",
         row == 0 ? '>' : ' ',
-        dayScoreHistory[idx].timestamp,
+        (unsigned)(idx + 1),
         dayScoreHistory[idx].level);
       oled.setCursor(0, 4 + row * 16);
       oled.print(buf);
