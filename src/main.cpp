@@ -287,10 +287,10 @@ void loop() {
       if (btn == BTN_SHORT_PRESS) {
         if (menuCursor == 0) {                              // "Abort"
           bleStop();
-          appState = STATE_NORMAL;
-          buttonPressed = false;
-          longPressTriggered = false;
-          displayNormal(selectedLevel, dayScoreCounter);
+          menuContext = MENU_CTX_SCORE;
+          menuCursor  = 0;
+          appState    = STATE_MENU;
+          displayMenu(menuItemsScore, 3, menuCursor);
         } else {                                            // "Back"
           appState = STATE_BLE;
           displayBleConnecting();
