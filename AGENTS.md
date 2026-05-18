@@ -34,7 +34,6 @@ Libraries (lib_deps):
   mathertel/RotaryEncoder @ ^1.5.3      Encoder reading (debounced, direction-safe, acceleration)
   adafruit/Adafruit SSD1306 @ ^2.5.7    OLED driver
   adafruit/Adafruit GFX Library @ ^1.11.5  Graphics primitives
-  adafruit/RTClib @ ^2.1.4              Software RTC (RTC_Millis)
   bluefruit.h                           BLE stack (bundled with Adafruit nRF52, no lib_deps entry needed)
 
 
@@ -48,7 +47,6 @@ Modules:
   Display   include/display.h       src/display.cpp         All OLED rendering
   Encoder   include/encoder.h       src/encoder.cpp         Rotation + button reading
   Scoring   include/scoring.h       src/scoring.cpp         Score data + submit/reset logic
-  RTC       include/rtc_time.h      src/rtc_time.cpp        Timestamp
   BLE       include/ble_connection.h  src/ble_connection.cpp  BLE GATT + data sync
   Main      —                       src/main.cpp            State machine, wiring
 
@@ -94,17 +92,13 @@ Level → Points mapping:
   Init         Empty
 
 Structure (DayScoreEntry):
-  timestamp[9]  // "HH:MM:SS" (ODBC format)
-  level         // uint8_t
+  level  // uint8_t (1–9)
 
-Example (JSON):
+Example (JSON — BLE payload):
 ```json
-{
-  "09:38:12": "3",
-  "09:39:22": "4",
-  "09:42:54": "7"
-}
+{"n":3,"s":[3,4,7]}
 ```
+`"n"` = entry count; `"s"` = array of levels in submission order.
 
 
 ## 6. State Machine
@@ -250,12 +244,9 @@ Rules:
 
 Data format (Characteristic_1 payload):
 ```json
-{
-  "09:38:12": "3",
-  "09:39:22": "4",
-  "09:42:54": "7"
-}
+{"n":3,"s":[3,4,7]}
 ```
+`"n"` = entry count; `"s"` = array of levels (uint8_t, 1–9) in submission order.
 
 
 ## 8. Display Reference
@@ -275,8 +266,8 @@ Menu layout (STATE_MENU):
   Bottom-right triangle: visible when cursor+2 < count (items exist below preview row)
 
 History list layout (STATE_HISTORY):
-  Row 0  y=4   "> HH:MM:SS  L<N>"  — top entry, targeted by short press
-  Row 1  y=20  "  HH:MM:SS  L<N>"
+  Row 0  y=4   "> #1  L<N>"  — top entry (1-based index), targeted by short press
+  Row 1  y=20  "  #2  L<N>"
   Top-right triangle: visible when scrollOffset > 0
   Bottom-right triangle: visible when more entries exist below
 
@@ -315,9 +306,9 @@ Extended Bluetooth:
   - Globally unique UUIDs generated with uuidgen (for published product)
 
 [ in work ] Real Time Clock (RTC):
-  - Get time signal from smartphone via BLE on sync
-  - Use received time to calibrate RTC_Millis drift (track millis offset)
-  - Use Adafruit RTClib for battery-backed RTC hardware
+  - No hardware RTC is planned; the device has no persistent time source.
+  - If wall-clock timestamps are needed in future, the Android app must write
+    the current Unix epoch to a new WRITE characteristic after connecting.
 
 Boot Screen:
   - PeakPoint logo/graphic
