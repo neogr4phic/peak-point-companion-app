@@ -31,6 +31,12 @@ static void writeStatus(const char* value) {
 }
 
 void bleInit() {
+  // Raise the peripheral's max ATT MTU from the 23-byte default to 247 bytes
+  // (SoftDevice S140 maximum) before begin(). The default 20-byte notification
+  // payload is not enough for 4+ history entries; this lets notify() send the
+  // full JSON in one packet once the central negotiates a higher MTU.
+  Bluefruit.configPrphConn(247, 2, 1, 1);
+
   Bluefruit.begin();
   Bluefruit.setTxPower(BLE_TX_POWER_DBM);
   Bluefruit.setName(BLE_DEVICE_NAME);
@@ -126,7 +132,9 @@ bool bleUpdate() {
       // notify() sends the actual BLE notification packet to the subscribed
       // central — without this call the phone's monitor callback never fires.
       daysHistoryChar.write(jsonBuf, strlen(jsonBuf));
-      bool ok = daysHistoryChar.notify(jsonBuf, strlen(jsonBuf)) > 0;
+      // Verify all bytes were sent — if MTU is still smaller than the payload,
+      // notify() truncates silently and returns fewer bytes than requested.
+      bool ok = daysHistoryChar.notify(jsonBuf, strlen(jsonBuf)) == (uint16_t)strlen(jsonBuf);
 
       if (ok) {
         writeStatus(BLE_STATUS_SYNCED);
