@@ -31,12 +31,12 @@ static void writeStatus(const char* value) {
 }
 
 void bleInit() {
-  // Raise the peripheral's max ATT MTU from the 23-byte default to 247 bytes
-  // (SoftDevice S140 maximum) before begin(). The default 20-byte notification
-  // payload is not enough for 4+ history entries; this lets notify() send the
-  // full JSON in one packet once the central negotiates a higher MTU.
+  // Raise max ATT MTU to 247 so Android's requestMTU(512) negotiates to 247
+  // instead of the default 23. This lets the 1500 ms fallback READ on Android
+  // return the full JSON payload (READ response = MTU-1 = 246 bytes).
+  // Note: event_len_max=2 causes notify() to return 0, but write() still
+  // stores the full value in the GATT attribute for READ access.
   Bluefruit.configPrphConn(247, 2, 1, 1);
-
   Bluefruit.begin();
   Bluefruit.setTxPower(BLE_TX_POWER_DBM);
   Bluefruit.setName(BLE_DEVICE_NAME);
@@ -128,13 +128,14 @@ bool bleUpdate() {
       static char jsonBuf[BLE_JSON_BUF_SIZE]; // static: avoids 512 B stack alloc per call
       serializeDayScoreHistory(jsonBuf, sizeof(jsonBuf));
 
-      // write() updates the GATT attribute value (for fallback READ access).
-      // notify() sends the actual BLE notification packet to the subscribed
-      // central — without this call the phone's monitor callback never fires.
-      daysHistoryChar.write(jsonBuf, strlen(jsonBuf));
-      // Verify all bytes were sent — if MTU is still smaller than the payload,
-      // notify() truncates silently and returns fewer bytes than requested.
-      bool ok = daysHistoryChar.notify(jsonBuf, strlen(jsonBuf)) == (uint16_t)strlen(jsonBuf);
+      // write() stores the full JSON in the GATT attribute so Android's
+      // 1500 ms fallback READ can always retrieve it (MTU=247 → 246-byte
+      // READ response, enough for any realistic payload).
+      // notify() is called for best-effort real-time delivery but may return
+      // 0 when event_len_max=2 is set; the return value is not used for ok.
+      size_t len = strlen(jsonBuf);
+      bool ok = (daysHistoryChar.write(jsonBuf, len) == len);
+      daysHistoryChar.notify(jsonBuf, len); // best-effort; return value ignored
 
       if (ok) {
         writeStatus(BLE_STATUS_SYNCED);
