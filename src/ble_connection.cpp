@@ -104,8 +104,16 @@ bool bleUpdate() {
     if (!bleDataSent) {
       bleDataSent = true;
 
-      // Wait for CCCD: central must subscribe to notifications before we
-      // write, otherwise the notification is lost in the discovery race.
+      // Write the full JSON into the GATT attribute immediately on connection
+      // so Android's 1500 ms fallback READ always finds the payload — even on
+      // a slow first-boot where service discovery takes > 1 s and the timer
+      // fires before the CCCD wait and display delay below complete.
+      static char jsonBuf[BLE_JSON_BUF_SIZE]; // static: avoids 512 B stack alloc per call
+      serializeDayScoreHistory(jsonBuf, sizeof(jsonBuf));
+      size_t len = strlen(jsonBuf);
+      bool ok = (daysHistoryChar.write(jsonBuf, len) == len);
+
+      // Wait for CCCD: central must subscribe before notify() is called.
       displayBleConnected();
       writeStatus(BLE_STATUS_CONNECTED);
 
@@ -121,20 +129,10 @@ bool bleUpdate() {
         delay(BLE_CONNECTED_DISPLAY_MS - elapsed);
       }
 
-      // Serialize and transmit
+      // Data already in GATT attribute; notify for best-effort real-time delivery.
       displayBleSyncing();
       writeStatus(BLE_STATUS_SYNCING);
 
-      static char jsonBuf[BLE_JSON_BUF_SIZE]; // static: avoids 512 B stack alloc per call
-      serializeDayScoreHistory(jsonBuf, sizeof(jsonBuf));
-
-      // write() stores the full JSON in the GATT attribute so Android's
-      // 1500 ms fallback READ can always retrieve it (MTU=247 → 246-byte
-      // READ response, enough for any realistic payload).
-      // notify() is called for best-effort real-time delivery but may return
-      // 0 when event_len_max=2 is set; the return value is not used for ok.
-      size_t len = strlen(jsonBuf);
-      bool ok = (daysHistoryChar.write(jsonBuf, len) == len);
       daysHistoryChar.notify(jsonBuf, len); // best-effort; return value ignored
 
       if (ok) {
