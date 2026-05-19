@@ -164,7 +164,14 @@ void loop() {
             if (maxOffset < 0) maxOffset = 0;
             if ((int)historyScrollOffset > maxOffset)
               historyScrollOffset = (uint16_t)maxOffset;
-            enterFlash(MSG_SCORE_DELETED, STATE_HISTORY, now);
+            if (dayScoreHistoryCount == 0) {
+              // Last entry deleted — history is empty, return to normal menu
+              menuContext = MENU_CTX_NORMAL;
+              menuCursor  = 0;
+              enterFlash(MSG_SCORE_DELETED, STATE_MENU, now);
+            } else {
+              enterFlash(MSG_SCORE_DELETED, STATE_HISTORY, now);
+            }
           } else if (menuCursor == 1) {                      // "Delete all"
             clearHistory();
             menuContext = MENU_CTX_NORMAL;
