@@ -120,13 +120,18 @@ Flow:
     → select "Back"             → STATE_MENU (context: NORMAL)
   STATE_SCORE
     → short press → STATE_MENU (context: SCORE)
-  STATE_MENU (context: SCORE)
+  STATE_MENU (context: SCORE)                    [always 3 items]
     → select "Transmit score" → STATE_BLE
     → select "Dismiss score"  → resetDay() → STATE_NORMAL
+    → select "Back"           → STATE_MENU (context: NORMAL)
   STATE_FLASH
     → auto-dismiss after 1500 ms → stored return state
   STATE_BLE
+    → short press (while advertising, not yet connected) → STATE_BLE_ABORT_MENU
     → sync complete or timeout → resetDay() → STATE_NORMAL
+  STATE_BLE_ABORT_MENU
+    → select "Abort" → bleStop() → STATE_MENU (context: SCORE)
+    → select "Back"  → STATE_BLE
 
 State descriptions:
   STATE_NORMAL    Default working state. Encoder adjusts level; short press submits.
@@ -134,7 +139,9 @@ State descriptions:
   STATE_HISTORY   Scrollable history list. Short press opens entry menu.
   STATE_SCORE     Full-screen final score with confetti animation. Short press opens score menu.
   STATE_FLASH     Auto-dismissing feedback message. No input accepted.
-  STATE_BLE       BLE advertising, connecting, syncing. No encoder input.
+  STATE_BLE       BLE advertising, connecting, syncing. No encoder input while connected.
+  STATE_BLE_ABORT_MENU  2-item abort menu shown during advertising (before connection).
+                        Encoder + button active. Selecting "Back" resumes STATE_BLE.
 
 Menu contents by context:
   MENU_CTX_NORMAL (history empty)     item 0: "Finish day"       item 1: "Back"
@@ -143,6 +150,7 @@ Menu contents by context:
   MENU_CTX_ENTRY                      item 0: "Delete selection" item 1: "Delete all"
                                       item 2: "Scroll list"      item 3: "Back"
   MENU_CTX_SCORE                      item 0: "Transmit score"   item 1: "Dismiss score"
+                                      item 2: "Back"
 
 
 ## 7. Functional Requirements
@@ -156,7 +164,7 @@ Menu contents by context:
 
 2. Submit (short press in STATE_NORMAL)
    Adds levelToPoints[selectedLevel] to dayScoreCounter (clamped to 9999).
-   Appends a timestamped entry to dayScoreHistory.
+   Appends an entry to dayScoreHistory.
 
 3. Options menu (long-press in STATE_NORMAL)
    - After 500 ms hold, opens STATE_MENU (context: NORMAL)
@@ -173,8 +181,8 @@ Menu contents by context:
 4. History browser (STATE_HISTORY)
    - Displays dayScoreHistory as a vertically scrollable list
    - Two rows visible at a time
-   - Top row: "> HH:MM:SS  L<N>" — marked as selected; short press targets this entry
-   - Bottom row: "  HH:MM:SS  L<N>"
+   - Top row: "> #1  L<N>" — 1-based index + level; marked as selected; short press targets this entry
+   - Bottom row: "  #2  L<N>"
    - Encoder scrolls the list
    - Triangle up (top-right): visible when scrolling up is possible
    - Triangle down (bottom-right): visible when scrolling down is possible
@@ -280,7 +288,49 @@ Long messages that exceed 128 px are split at the last fitting word boundary
 and rendered on two lines (y=6, y=18).
 
 
-## 9. Future Features — DO NOT IMPLEMENT
+## 9. Config Constants (include/config.h)
+
+All tuneable values live in `include/config.h`. Key groups:
+
+Timing:
+  BTN_DEBOUNCE_MS          50     Button debounce window
+  BTN_LONG_PRESS_MS        500    Long-press activation threshold
+  DISPLAY_UPDATE_INTERVAL_MS  50  Loop throttle (~20 FPS)
+  FLASH_DURATION_MS        1500   Auto-dismiss for flash messages
+  SCORE_AUTO_MENU_MS       3000   Delay before score menu auto-opens
+  BLE_ADVERTISE_TIMEOUT_MS 30000  Advertising timeout
+  BLE_CONNECTED_DISPLAY_MS 800    "Smartphone connected!" display duration
+  BLE_RESULT_DISPLAY_MS    2000   "Sync finished!" / "BLE Error!" display duration
+  BLE_CCCD_TIMEOUT_MS      5000   Max wait for central CCCD subscription
+
+Display layout:
+  MENU_ROW0_Y      4    Y-offset of first menu/history row
+  MENU_ROW_SPACING 16   Vertical distance between rows
+  HISTORY_BUF_SIZE 24   snprintf buffer size for history entry strings
+
+Animation:
+  CONFETTI_COUNT   12   Number of confetti particles in final-score animation
+
+BLE:
+  BLE_JSON_BUF_SIZE   512  JSON payload buffer (static in bleUpdate to save stack)
+  BLE_STATUS_MAX_LEN   32  Status characteristic max length
+
+
+## 10. Code Helpers
+
+Located in main.cpp:
+  moveCursor(var, delta, maxVal, minVal=0)
+    Applies encoder delta to a uint8_t cursor, clamped to [minVal, maxVal].
+    Used for selectedLevel, menuCursor (menu + BLE abort menu).
+    STATE_HISTORY scroll (uint16_t) is handled inline due to different type.
+
+Located in display.cpp (internal, not in display.h):
+  displayScrollTriangles(canUp, canDown)
+    Draws up/down scroll indicator triangles in the top/bottom-right corner.
+    Called by both displayMenu() and displayHistoryList().
+
+
+## 11. Future Features — DO NOT IMPLEMENT
 
 Gamification:
 - instead of points, you will gain meters in altitude (like when climbing a mountain). The unit should be "m" for meters.

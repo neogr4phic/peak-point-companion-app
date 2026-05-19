@@ -73,14 +73,14 @@
 #define CONFETTI_COUNT       12    // Number of confetti particles in final-score animation
 
 // =============================================================================
-// Timing — BLE CCCD
+// Timing — BLE CCCD (Client Characteristic Configuration Descriptor)
 // =============================================================================
 #define BLE_CCCD_TIMEOUT_MS  5000  // Max wait for central to subscribe (CCCD) before proceeding
 
 // =============================================================================
 // BLE Device Identity
 // =============================================================================
-#define BLE_DEVICE_NAME          "PeakPoint"
+#define BLE_DEVICE_NAME          "PeakPointCompagnion"
 
 // =============================================================================
 // BLE Status Strings (written to the status characteristic)
