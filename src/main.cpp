@@ -201,6 +201,16 @@ void loop() {
       }
 
       if (now - lastDisplayUpdate >= DISPLAY_UPDATE_INTERVAL_MS && appState == STATE_MENU) {
+        // Re-resolve items — menuContext may have changed during button handling
+        normalHasHistory = (menuContext == MENU_CTX_NORMAL) && (dayScoreHistoryCount > 0);
+        if (menuContext == MENU_CTX_NORMAL) {
+          items = normalHasHistory ? menuItemsNormal4 : menuItemsNormal2;
+          itemCount = normalHasHistory ? 4 : 2;
+        } else if (menuContext == MENU_CTX_ENTRY) {
+          items = menuItemsEntry; itemCount = 4;
+        } else {
+          items = menuItemsScore; itemCount = 3;
+        }
         displayMenu(items, itemCount, menuCursor);
         lastDisplayUpdate = now;
       }
