@@ -332,7 +332,11 @@ Located in display.cpp (internal, not in display.h):
 
 ## 11. Future Features — DO NOT IMPLEMENT
 
+Multi-User Support
+- input multiple users with one compagnion
+
 Gamification:
+- Visuals based on "Candy Crush" art style
 - instead of points, you will gain meters in altitude (like when climbing a mountain). The unit should be "m" for meters.
 
 Translation:
